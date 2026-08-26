@@ -26,7 +26,7 @@ export default function ExplanationStage({
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
       <RoomHeader label="Walkthrough / Question 4 of 4" detail="Approximately 3 minutes remaining" progress={86} />
       <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)] lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
-        <section className="order-2 flex min-h-[320px] max-h-[360px] flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor md:order-1 md:h-full md:max-h-none md:min-h-0">
+        <section className="hidden overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor md:order-1 md:flex md:h-full md:min-h-0 md:flex-col">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-[var(--assessment-panel-pad)] text-white/70">
             <div className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-4" /> Submitted solution</div>
             <Badge className="bg-white/10 text-white/75">Read only</Badge>
@@ -37,29 +37,39 @@ export default function ExplanationStage({
           </div>
         </section>
 
-        <section className="order-1 flex min-h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:order-2 md:h-full md:min-h-0">
+        <section className="order-1 flex h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:order-2 md:h-full">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-[var(--assessment-panel-pad)]">
             <Badge tone="neutral">Walkthrough</Badge>
             <span className="text-xs font-medium text-muted">Question 4 of 4</span>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 p-[var(--assessment-panel-pad)] text-center">
+          <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-[var(--assessment-panel-pad)] text-center sm:gap-4">
             <AIOrb state={orbState} size="small" />
             <div className="max-w-xl">
-              <h1 tabIndex={-1} data-stage-heading className="stage-focus short-mobile-question font-serif text-[clamp(1.65rem,2.3vw,2.25rem)] leading-tight font-medium tracking-[-0.03em] text-ink">&ldquo;Walk me through your approach and one tradeoff you considered.&rdquo;</h1>
-              <p className="short-mobile-hide mt-3 text-sm leading-6 text-muted">Your submitted code stays visible while your response is captured.</p>
+              <h1 tabIndex={-1} data-stage-heading className="stage-focus short-mobile-question short-screen-question font-serif text-[clamp(1.65rem,2.3vw,2.25rem)] leading-tight font-medium tracking-[-0.03em] text-ink">&ldquo;Walk me through your approach and one tradeoff you considered.&rdquo;</h1>
+              <p className="short-mobile-hide short-screen-hide mt-3 text-sm leading-6 text-muted">Your submitted code stays visible while your response is captured.</p>
             </div>
+            <details className="group w-full max-w-xl border-y border-line text-left open:absolute open:inset-[var(--assessment-panel-pad)] open:z-10 open:flex open:w-auto open:max-w-none open:flex-col open:overflow-hidden open:rounded-lg open:border open:bg-surface open:shadow-float md:hidden">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-1 text-xs font-semibold text-ink-soft outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2"><FileCode2 className="size-4" /> View submitted solution</span>
+                <Badge tone="neutral">Read only</Badge>
+              </summary>
+              <pre className="max-h-36 overflow-auto border-t border-line bg-editor p-3 font-mono text-xs leading-5 whitespace-pre text-white/85 group-open:min-h-0 group-open:flex-1 group-open:max-h-none">{code}</pre>
+            </details>
           </div>
 
-          <div className="shrink-0 border-t border-line p-[var(--assessment-panel-pad)]">
+          <div className="shrink-0 border-t border-line p-3 lg:p-[var(--assessment-panel-pad)]">
             <div className="mx-auto max-w-md"><AnswerStatus mode={answerMode} elapsed={answerElapsed} onDone={onFinish} doneLabel="Finish interview" /></div>
           </div>
 
-          <div className="grid min-h-16 shrink-0 grid-cols-[minmax(0,1fr)_7rem] items-center gap-4 border-t border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-2">
+          <div className="grid min-h-14 shrink-0 grid-cols-[minmax(0,1fr)_6.5rem] items-center gap-3 border-t border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-2">
             <div className="text-left">
               <p className="flex items-center gap-2 text-xs font-semibold text-ink-soft"><span className={`size-1.5 rounded-full ${answerMode === "answering" ? "bg-danger" : answerMode === "saved" ? "bg-success" : "bg-muted"}`} /> {answerMode === "answering" ? "Answer capture is active" : "Camera and microphone remain on"}</p>
-              <p className="mt-1 text-xs leading-5 text-muted">Approach · complexity · edge cases · tradeoffs</p>
-              <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-muted"><span className="flex items-center gap-1.5"><Camera className="size-3.5" /> Camera on</span><span className="flex items-center gap-1.5"><Mic className="size-3.5" /> Microphone on</span></div>
+              <p className="short-screen-hide mt-1 hidden text-xs leading-5 text-muted md:block">Approach · complexity · edge cases · tradeoffs</p>
+              <div className="mt-1.5 flex gap-3 text-xs text-muted">
+                <span className="flex items-center gap-1.5" aria-label="Camera on"><Camera className="size-3.5" /><span className="hidden md:inline">Camera on</span></span>
+                <span className="flex items-center gap-1.5" aria-label="Microphone on"><Mic className="size-3.5" /><span className="hidden md:inline">Microphone on</span></span>
+              </div>
             </div>
             <CandidatePreview stream={stream} className="w-full rounded-lg" />
           </div>

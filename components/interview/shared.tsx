@@ -116,7 +116,7 @@ export const CandidatePreview = memo(function CandidatePreview({
           autoPlay
           muted
           playsInline
-          className="size-full object-cover [transform:scaleX(-1)]"
+          className="size-full -scale-x-100 transform-gpu object-cover [backface-visibility:hidden]"
         />
       ) : (
         <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_25%,#303531_0%,#111412_72%)]">
@@ -195,9 +195,12 @@ export function SecureHeader({
   compactLabel?: string;
 }) {
   return (
-    <header className="room-header shrink-0 border-b border-line bg-surface/95 backdrop-blur-xl">
+    <header
+      className="room-header shrink-0 border-b border-line bg-surface/95 backdrop-blur-xl"
+      style={{ viewTransitionName: "assessment-header" }}
+    >
       <div className="mx-auto flex h-full w-full max-w-[1520px] items-center justify-between px-[var(--assessment-outer)]">
-        <PossoLogo />
+        <PossoLogo responsiveCompact />
         <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted">
           <LockKeyhole className="size-3.5 text-brand" />
           <span className={cn("max-w-[52vw] truncate", compactLabel && "hidden sm:inline")}>
@@ -220,16 +223,19 @@ export function RoomHeader({
   progress: number;
 }) {
   return (
-    <header className="room-header shrink-0 border-b border-line bg-surface/95 backdrop-blur-xl">
+    <header
+      className="room-header shrink-0 border-b border-line bg-surface/95 backdrop-blur-xl"
+      style={{ viewTransitionName: "assessment-header" }}
+    >
       <div className="mx-auto flex h-full w-full max-w-[1520px] items-center gap-4 px-[var(--assessment-outer)]">
         <PossoLogo responsiveCompact />
         <div className="hidden h-7 w-px bg-line md:block" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold text-ink-soft">{label}</div>
-          <div className="mt-1.5 flex items-center gap-3">
-            <Progress value={progress} className="max-w-48" aria-label="Assessment progress" />
-            <span className="hidden text-xs text-muted xl:inline">{detail}</span>
+          <div className="flex min-w-0 items-center justify-between gap-4">
+            <div className="truncate text-xs font-semibold text-ink-soft">{label}</div>
+            <span className="hidden shrink-0 text-xs text-muted xl:inline">{detail}</span>
           </div>
+          <Progress value={progress} className="mt-1.5 max-w-sm" aria-label="Assessment progress" />
         </div>
         <div className="hidden items-center gap-4 text-xs font-semibold text-ink-soft lg:flex">
           <span className="flex items-center gap-1.5">
@@ -312,7 +318,7 @@ export function AnswerStatus({
   }
 
   return (
-    <div className="flex flex-col items-stretch gap-3 rounded-lg border border-line bg-surface-soft px-4 py-3 text-left lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-line bg-surface-soft px-3 py-3 text-left sm:gap-4 sm:px-4 lg:flex lg:justify-between">
       <div className="flex items-center gap-3">
         <span className="relative grid size-9 place-items-center rounded-md bg-brand text-white">
           <Mic className="size-4" />
@@ -323,7 +329,7 @@ export function AnswerStatus({
           <p className="mt-0.5 font-mono text-xs text-muted">{formatTime(elapsed)}</p>
         </div>
       </div>
-      <Button size="sm" className="h-11 w-full lg:w-auto" onClick={onDone}>
+      <Button size="sm" className="h-11 w-auto shrink-0 px-3 sm:px-4" onClick={onDone}>
         <Check /> {doneLabel}
       </Button>
     </div>

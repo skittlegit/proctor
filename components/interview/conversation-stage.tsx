@@ -28,7 +28,7 @@ export default function ConversationStage({
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
       <RoomHeader label={`Interview / Question ${questionIndex + 1} of 4`} detail="Approximately 27 minutes remaining" progress={24 + questionIndex * 14} />
       <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_var(--assessment-rail)]">
-        <section className="flex min-h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:min-h-0">
+        <section className="flex h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-[var(--assessment-panel-pad)]">
             <Badge tone="neutral">{question.label}</Badge>
             <span className="text-xs font-medium text-muted">Question {questionIndex + 1} of 4</span>
@@ -39,7 +39,7 @@ export default function ConversationStage({
               <AIOrb state={orbState} size="small" />
             </div>
             <div className="mx-auto max-w-3xl lg:mx-0">
-              <h1 tabIndex={-1} data-stage-heading className="stage-focus short-mobile-question font-serif text-[clamp(1.8rem,2.5vw,2.65rem)] leading-[1.16] font-medium tracking-[-0.035em] text-ink">
+              <h1 tabIndex={-1} data-stage-heading className="stage-focus short-mobile-question short-screen-question font-serif text-[clamp(1.8rem,2.5vw,2.65rem)] leading-[1.16] font-medium tracking-[-0.035em] text-ink">
                 &ldquo;{question.prompt}&rdquo;
               </h1>
               <p className="short-mobile-hide mt-3 max-w-2xl text-sm leading-6 text-muted">{question.note}</p>
@@ -52,13 +52,16 @@ export default function ConversationStage({
             </div>
           </div>
 
-          <div className="flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-x-5 gap-y-2 border-t border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-2 text-xs text-muted">
-            <span className="flex items-center gap-2 font-medium text-ink-soft"><span className={cn("size-1.5 rounded-full", answerMode === "answering" ? "bg-danger" : answerMode === "saved" ? "bg-success" : "bg-muted")} /> {answerMode === "answering" ? "Answer capture is active" : "Camera and microphone remain on"}</span>
-            <span className="flex items-center gap-4"><span className="flex items-center gap-1.5"><Camera className="size-3.5" /> Camera on</span><span className="flex items-center gap-1.5"><Mic className="size-3.5" /> Microphone on</span></span>
+          <div className="grid min-h-14 shrink-0 grid-cols-[minmax(0,1fr)_6rem] items-center gap-3 border-t border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-2 text-xs text-muted md:flex md:min-h-11 md:flex-wrap md:justify-between md:gap-x-5 md:gap-y-2">
+            <div className="min-w-0">
+              <span className="flex items-center gap-2 font-medium text-ink-soft"><span className={cn("size-1.5 rounded-full", answerMode === "answering" ? "bg-danger" : answerMode === "saved" ? "bg-success" : "bg-muted")} /> <span className="truncate">{answerMode === "answering" ? "Answer capture is active" : "Proctoring remains active"}</span></span>
+              <span className="mt-1.5 flex items-center gap-4 md:mt-0"><span className="flex items-center gap-1.5"><Camera className="size-3.5" /> Camera on</span><span className="flex items-center gap-1.5"><Mic className="size-3.5" /> Mic on</span></span>
+            </div>
+            <CandidatePreview stream={stream} className="w-full rounded-lg md:hidden" />
           </div>
         </section>
 
-        <aside className="grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-[var(--assessment-gap)] md:h-full md:min-h-0 md:grid-cols-1 md:grid-rows-[auto_minmax(0,1fr)]">
+        <aside className="hidden items-start gap-[var(--assessment-gap)] md:grid md:h-full md:min-h-0 md:grid-cols-1 md:grid-rows-[auto_minmax(0,1fr)]">
           <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />
 
           <section className="hidden min-h-0 border-y border-line bg-transparent py-1 md:flex md:flex-col" aria-label="Assessment path">
@@ -77,10 +80,6 @@ export default function ConversationStage({
               ))}
             </div>
           </section>
-
-          <div className="flex min-h-[4rem] items-center border-y border-line px-1 text-xs leading-5 text-muted md:hidden">
-            The next section opens automatically after your second response.
-          </div>
         </aside>
       </AssessmentFrame>
     </main>

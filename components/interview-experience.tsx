@@ -1,7 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  ViewTransition,
+} from "react";
 
 import {
   assessment,
@@ -181,6 +190,10 @@ export default function InterviewExperience() {
   const transitionTimerRef = useRef<number | null>(null);
   const testTimerRef = useRef<number | null>(null);
   const transitioningRef = useRef(false);
+
+  const dispatchWithTransition = useCallback((action: SessionAction) => {
+    startTransition(() => dispatch(action));
+  }, []);
 
   const clockEnabled = session.stage === "countdown" || session.stage === "coding" || session.answerMode === "answering";
   const tickRate = session.stage === "countdown" ? 100 : 1000;
@@ -370,16 +383,16 @@ export default function InterviewExperience() {
   useEffect(() => {
     if (session.stage !== "countdown" || !session.countdownDeadline) return;
     const delay = Math.max(0, session.countdownDeadline - Date.now());
-    const timer = window.setTimeout(() => dispatch({ type: "begin-interview" }), delay);
+    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-interview" }), delay);
     return () => window.clearTimeout(timer);
-  }, [session.countdownDeadline, session.stage]);
+  }, [dispatchWithTransition, session.countdownDeadline, session.stage]);
 
   useEffect(() => {
     if (session.stage !== "coding" || !session.codeDeadline) return;
     const delay = Math.max(0, session.codeDeadline - Date.now());
-    const timer = window.setTimeout(() => dispatch({ type: "begin-explanation" }), delay);
+    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-explanation" }), delay);
     return () => window.clearTimeout(timer);
-  }, [session.codeDeadline, session.stage]);
+  }, [dispatchWithTransition, session.codeDeadline, session.stage]);
 
   useEffect(() => {
     try {
@@ -446,10 +459,10 @@ export default function InterviewExperience() {
     dispatch({ type: "answer-saved" });
     transitionTimerRef.current = window.setTimeout(() => {
       transitioningRef.current = false;
-      if (session.questionIndex < assessment.questions.length - 1) dispatch({ type: "next-question" });
-      else dispatch({ type: "begin-coding", deadline: Date.now() + assessment.codingSeconds * 1000 });
+      if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" });
+      else dispatchWithTransition({ type: "begin-coding", deadline: Date.now() + assessment.codingSeconds * 1000 });
     }, 550);
-  }, [session.answerMode, session.questionIndex, stopAnswerRecorder]);
+  }, [dispatchWithTransition, session.answerMode, session.questionIndex, stopAnswerRecorder]);
 
   const runTests = useCallback(() => {
     if (session.testStatus === "running") return;
@@ -469,14 +482,14 @@ export default function InterviewExperience() {
       setCaptureIssue(describeRecorderError());
       return;
     }
-    dispatch({ type: "complete" });
+    dispatchWithTransition({ type: "complete" });
     stopMedia();
     try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
-  }, [session.answerMode, stopAnswerRecorder, stopMedia]);
+  }, [dispatchWithTransition, session.answerMode, stopAnswerRecorder, stopMedia]);
 
   const goBack = () => {
     stopMedia();
-    dispatch({ type: "stage", stage: "welcome" });
+    dispatchWithTransition({ type: "stage", stage: "welcome" });
   };
 
   const announcement = useMemo(() => {
@@ -511,6 +524,9 @@ export default function InterviewExperience() {
   }, [assessmentActive, captureIssue, countdown, media.error, media.integrityIssue, media.status, session.answerMode, session.questionIndex, session.stage, session.testStatus]);
 
   const dialogOpen = Boolean(captureIssue || (assessmentActive && media.integrityIssue));
+  const transitionKey = session.stage === "conversation"
+    ? `conversation-${session.questionIndex}`
+    : session.stage;
 
   useEffect(() => {
     const root = stageRootRef.current;
@@ -522,29 +538,70 @@ export default function InterviewExperience() {
   return (
     <>
       <div ref={stageRootRef} className="contents" aria-hidden={dialogOpen || undefined}>
-        {session.stage === "welcome" && <WelcomeStage onContinue={() => dispatch({ type: "stage", stage: "setup" })} />}
-        {session.stage === "setup" && (
-          <SetupStage
-            mediaStatus={media.status}
-            mediaError={media.error}
-            stream={media.stream}
-            devices={media.devices}
-            selectedCamera={media.selectedCamera}
-            selectedMic={media.selectedMic}
-            consent={session.consent}
-            onConsentChange={(consent) => dispatch({ type: "consent", consent })}
-            onCameraChange={media.changeCamera}
-            onMicChange={media.changeMic}
-            onRequestMedia={() => void media.request()}
-            onBack={goBack}
-            onStart={() => dispatch({ type: "countdown", deadline: Date.now() + 3000 })}
-          />
-        )}
-        {session.stage === "countdown" && <CountdownStage count={countdown} />}
-        {session.stage === "conversation" && <ConversationStage questionIndex={session.questionIndex} answerMode={session.answerMode} answerElapsed={answerElapsed} stream={media.stream} onFinishAnswer={finishConversationAnswer} />}
-        {session.stage === "coding" && <CodingStage code={session.code} timeRemaining={codeTimeRemaining} testStatus={session.testStatus} stream={media.stream} onCodeChange={(code) => dispatch({ type: "code", code })} onRunTests={runTests} onSubmit={() => dispatch({ type: "begin-explanation" })} />}
-        {session.stage === "explanation" && <ExplanationStage code={session.code} answerMode={session.answerMode} answerElapsed={answerElapsed} stream={media.stream} onFinish={finishInterview} />}
-        {session.stage === "complete" && <CompleteStage />}
+        <ViewTransition
+          key={transitionKey}
+          name="assessment-stage"
+          share="assessment-stage-swap"
+          enter="assessment-stage-swap"
+          exit="assessment-stage-swap"
+          default="none"
+        >
+          <div className="assessment-stage">
+            {session.stage === "welcome" && (
+              <WelcomeStage
+                onContinue={() => dispatchWithTransition({ type: "stage", stage: "setup" })}
+              />
+            )}
+            {session.stage === "setup" && (
+              <SetupStage
+                mediaStatus={media.status}
+                mediaError={media.error}
+                stream={media.stream}
+                devices={media.devices}
+                selectedCamera={media.selectedCamera}
+                selectedMic={media.selectedMic}
+                consent={session.consent}
+                onConsentChange={(consent) => dispatch({ type: "consent", consent })}
+                onCameraChange={media.changeCamera}
+                onMicChange={media.changeMic}
+                onRequestMedia={() => void media.request()}
+                onBack={goBack}
+                onStart={() => dispatchWithTransition({ type: "countdown", deadline: Date.now() + 3000 })}
+              />
+            )}
+            {session.stage === "countdown" && <CountdownStage count={countdown} />}
+            {session.stage === "conversation" && (
+              <ConversationStage
+                questionIndex={session.questionIndex}
+                answerMode={session.answerMode}
+                answerElapsed={answerElapsed}
+                stream={media.stream}
+                onFinishAnswer={finishConversationAnswer}
+              />
+            )}
+            {session.stage === "coding" && (
+              <CodingStage
+                code={session.code}
+                timeRemaining={codeTimeRemaining}
+                testStatus={session.testStatus}
+                stream={media.stream}
+                onCodeChange={(code) => dispatch({ type: "code", code })}
+                onRunTests={runTests}
+                onSubmit={() => dispatchWithTransition({ type: "begin-explanation" })}
+              />
+            )}
+            {session.stage === "explanation" && (
+              <ExplanationStage
+                code={session.code}
+                answerMode={session.answerMode}
+                answerElapsed={answerElapsed}
+                stream={media.stream}
+                onFinish={finishInterview}
+              />
+            )}
+            {session.stage === "complete" && <CompleteStage />}
+          </div>
+        </ViewTransition>
       </div>
 
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>

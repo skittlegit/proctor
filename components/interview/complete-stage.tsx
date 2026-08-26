@@ -23,7 +23,7 @@ export default function CompleteStage() {
         aria-labelledby="completion-heading"
       >
         <div className="grid w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-          <article className="px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12 xl:px-16">
+          <article className="px-5 py-7 sm:px-8 sm:py-10 lg:px-12 lg:py-12 xl:px-16">
             <div className="flex items-center gap-3">
               <span
                 className="grid size-10 place-items-center rounded-lg border border-ink bg-ink text-white"
@@ -39,7 +39,7 @@ export default function CompleteStage() {
               id="completion-heading"
               tabIndex={-1}
               data-stage-heading
-              className="stage-focus mt-8 max-w-xl text-[clamp(2.25rem,8vw,4rem)] leading-[1.02] font-semibold tracking-[-0.05em] text-ink"
+              className="stage-focus mt-6 max-w-xl text-[clamp(2.25rem,8vw,4rem)] leading-[1.02] font-semibold tracking-[-0.05em] text-ink sm:mt-8"
             >
               You&apos;re finished, Alex.
             </h1>
@@ -48,11 +48,11 @@ export default function CompleteStage() {
               been released for this session.
             </p>
 
-            <div className="mt-8 flex w-fit flex-wrap overflow-hidden rounded-lg border border-line text-xs font-semibold text-ink-soft">
-              <span className="flex items-center gap-2 px-4 py-3">
+            <div className="mt-6 grid w-full max-w-sm grid-cols-2 overflow-hidden rounded-lg border border-line text-xs font-semibold text-ink-soft sm:mt-8 sm:w-fit">
+              <span className="flex items-center justify-center gap-2 px-2 py-3 sm:px-4">
                 <CameraOff className="size-3.5" /> Camera off
               </span>
-              <span className="flex items-center gap-2 border-l border-line px-4 py-3">
+              <span className="flex items-center justify-center gap-2 border-l border-line px-2 py-3 sm:px-4">
                 <MicOff className="size-3.5" /> Microphone off
               </span>
             </div>

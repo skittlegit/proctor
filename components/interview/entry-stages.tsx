@@ -46,7 +46,7 @@ export function WelcomeStage({ onContinue }: { onContinue: () => void }) {
               <h1
                 tabIndex={-1}
                 data-stage-heading
-                className="stage-focus mt-4 max-w-3xl font-serif text-[clamp(2.55rem,10.5vw,4.65rem)] leading-[0.98] font-medium tracking-[-0.05em] text-ink sm:text-[clamp(3.1rem,5vw,4.65rem)]"
+                className="stage-focus mt-4 max-w-3xl font-serif text-[clamp(2.55rem,10.5vw,4.65rem)] leading-[0.98] font-medium tracking-[-0.05em] text-ink max-[374px]:text-[2.25rem] sm:text-[clamp(3.1rem,5vw,4.65rem)]"
               >
                 Ready when you are, Alex.
               </h1>
@@ -88,7 +88,7 @@ export function WelcomeStage({ onContinue }: { onContinue: () => void }) {
             </section>
 
             <section
-              className="border-t border-line px-5 py-6 sm:px-7 lg:border-t-0 lg:border-l lg:px-10 lg:py-9 xl:px-12 xl:py-11"
+              className="flex flex-col border-t border-line px-5 py-6 sm:px-7 lg:border-t-0 lg:border-l lg:px-10 lg:py-9 xl:px-12 xl:py-11"
               aria-label="Interview agenda"
             >
               <div className="flex items-end justify-between gap-4 pb-3">
@@ -120,7 +120,7 @@ export function WelcomeStage({ onContinue }: { onContinue: () => void }) {
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 text-xs leading-5 text-muted">
+              <p className="mt-auto border-t border-line pt-4 text-xs leading-5 text-muted">
                 Only the current section appears during the assessment.
               </p>
             </section>
@@ -129,7 +129,7 @@ export function WelcomeStage({ onContinue }: { onContinue: () => void }) {
 
         <footer className="flex min-h-8 shrink-0 items-end justify-between gap-4 text-[10px] text-muted sm:text-[11px]">
           <span>Camera and microphone are required.</span>
-          <span className="font-mono">Invite / {assessment.id}</span>
+          <span className="font-mono max-[359px]:hidden">Invite / {assessment.id}</span>
         </footer>
       </div>
     </main>
@@ -177,8 +177,8 @@ export function SetupStage({
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
       <SecureHeader label="System check" />
       <div className="assessment-content shell-pad mx-auto flex min-h-[calc(100dvh-var(--shell-total-header))] w-full max-w-[1520px] flex-col justify-center md:min-h-0">
-        <div className="flex min-h-0 w-full flex-col md:h-full md:max-h-[650px]">
-        <div className="mb-4 flex shrink-0 items-center justify-between gap-5">
+        <div className="flex min-h-0 w-full flex-col md:h-full md:max-h-[600px]">
+        <div className="mb-4 flex shrink-0 items-center gap-5">
           <div className="flex items-center gap-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-[11px]">
@@ -201,9 +201,6 @@ export function SetupStage({
               <ArrowLeft className="size-4" />
             </button>
           </div>
-          <p className="hidden max-w-md text-right text-xs leading-5 text-muted xl:block">
-            After you begin, camera and microphone stay on until submission.
-          </p>
         </div>
 
         <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(300px,350px)] xl:grid-cols-[minmax(0,1fr)_minmax(340px,390px)] xl:gap-6">
@@ -249,7 +246,7 @@ export function SetupStage({
           </section>
 
           <section
-            className="min-w-0 max-w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:overflow-y-auto"
+            className="flex min-w-0 max-w-full flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:overflow-y-auto"
             aria-labelledby="device-settings-heading"
           >
             <header className="border-b border-line px-4 py-3.5 sm:px-5 sm:py-4">
@@ -264,7 +261,7 @@ export function SetupStage({
               </p>
             </header>
 
-            <div className="divide-y divide-line">
+            <div className="flex min-h-0 flex-1 flex-col divide-y divide-line">
               <DeviceSelect
                 icon={Camera}
                 label="Camera"
@@ -311,7 +308,7 @@ export function SetupStage({
                   {mediaError}
                 </p>
               )}
-              <div className="mobile-action-bar border-t border-line bg-surface px-4 py-4 sm:px-5">
+              <div className="mobile-action-bar mt-auto bg-surface px-4 py-4 sm:px-5">
                 {mediaStatus === "ready" ? (
                   <Button
                     className="mx-auto h-11 w-full max-w-md"

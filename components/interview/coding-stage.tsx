@@ -86,7 +86,7 @@ export default function CodingStage({
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
       <RoomHeader label="Coding / Question 3 of 4" detail="Timed code workspace" progress={66} />
       <AssessmentFrame className="md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[var(--assessment-rail)_minmax(0,1fr)]">
-        <section className="flex max-h-[360px] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:max-h-none">
+        <section className="flex max-h-[18rem] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:max-h-none">
           <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line px-[var(--assessment-panel-pad)]">
             <Badge tone="neutral">Coding brief</Badge>
             <span aria-label={`${formatTime(timeRemaining)} remaining`} className="flex items-center gap-1.5 font-mono text-xs font-semibold text-ink-soft"><Clock3 className="size-3.5" /> {formatTime(timeRemaining)}</span>
@@ -116,7 +116,7 @@ export default function CodingStage({
           </div>
 
           <div className="shrink-0 border-t border-line p-[var(--assessment-panel-pad)]">
-            <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 md:hidden">
+            <div className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 md:hidden">
               <CandidatePreview stream={stream} className="w-full rounded-lg" />
               <div className="space-y-2 text-xs text-muted">
                 <span className="flex items-center gap-2"><Camera className="size-3.5" /> Camera on</span>
@@ -133,7 +133,7 @@ export default function CodingStage({
         <section className="flex min-h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-w-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:min-h-0">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-[var(--assessment-panel-pad)]">
             <div className="flex items-center gap-2 text-xs font-semibold text-ink-soft"><FileCode2 className="size-4" /> solution.ts <span className="font-normal text-muted">· TypeScript</span></div>
-            <span className="text-xs font-medium text-muted">Draft in progress</span>
+            <span className="hidden text-xs font-medium text-muted min-[400px]:inline">Draft in progress</span>
           </div>
 
           <CodeEditor code={code} onChange={onCodeChange} />
