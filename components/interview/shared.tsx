@@ -5,13 +5,13 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  LoaderCircle,
   LockKeyhole,
   Mic,
   ShieldCheck,
 } from "lucide-react";
 import { memo, useEffect, useRef } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -41,13 +41,24 @@ export function AssessmentFrame({
 
 export function PossoSymbol({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 48 48" className={cn("size-8 shrink-0 sm:size-9", className)} aria-hidden="true" focusable="false">
-      <circle cx="24" cy="14.5" r="12" fill="#7000E8" />
-      <circle cx="33.5" cy="24" r="12" fill="#7000E8" />
-      <circle cx="24" cy="33.5" r="12" fill="#7000E8" />
-      <circle cx="14.5" cy="24" r="12" fill="#7000E8" />
-      <path d="M13.4 14.5C16.7 12.9 20.2 12 24 12s7.3.9 10.6 2.5C36.2 17.8 37 20.2 37 24s-.8 6.2-2.4 9.5C31.3 35.1 27.8 36 24 36s-7.3-.9-10.6-2.5C11.8 30.2 11 27.8 11 24s.8-6.2 2.4-9.5Z" fill="#08A8D4" />
-      <path d="M24 12.2c4.8 2.8 8.8 6.8 11.8 11.8-3 5-7 9-11.8 11.8-4.8-2.8-8.8-6.8-11.8-11.8 3-5 7-9 11.8-11.8Z" fill="#20E3E6" />
+    <svg
+      viewBox="0 0 48 48"
+      className={cn("size-8 shrink-0 text-ink sm:size-9", className)}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="24" cy="14.5" r="12" fill="currentColor" />
+      <circle cx="33.5" cy="24" r="12" fill="currentColor" />
+      <circle cx="24" cy="33.5" r="12" fill="currentColor" />
+      <circle cx="14.5" cy="24" r="12" fill="currentColor" />
+      <path
+        d="M13.4 14.5C16.7 12.9 20.2 12 24 12s7.3.9 10.6 2.5C36.2 17.8 37 20.2 37 24s-.8 6.2-2.4 9.5C31.3 35.1 27.8 36 24 36s-7.3-.9-10.6-2.5C11.8 30.2 11 27.8 11 24s.8-6.2 2.4-9.5Z"
+        fill="var(--surface)"
+      />
+      <path
+        d="M24 12.2c4.8 2.8 8.8 6.8 11.8 11.8-3 5-7 9-11.8 11.8-4.8-2.8-8.8-6.8-11.8-11.8 3-5 7-9 11.8-11.8Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
@@ -57,7 +68,13 @@ export function PossoLogo({ compact = false, responsiveCompact = false }: { comp
     <span className="flex shrink-0 items-center gap-2.5" role="img" aria-label="Posso Build">
       <PossoSymbol />
       {!compact && (
-        <span aria-hidden="true" className={cn("whitespace-nowrap text-[24px] leading-none font-black tracking-[-0.065em] text-[#09141d] sm:text-[26px]", responsiveCompact && "max-[419px]:hidden")}>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "whitespace-nowrap text-[23px] leading-none font-extrabold tracking-[-0.055em] text-ink sm:text-[25px]",
+            responsiveCompact && "max-[419px]:hidden",
+          )}
+        >
           PossoBuild
         </span>
       )}
@@ -76,7 +93,7 @@ export const CandidatePreview = memo(function CandidatePreview({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const live = Boolean(
-    stream?.getTracks().some((track) => track.readyState === "live"),
+    stream?.getVideoTracks().some((track) => track.readyState === "live"),
   );
 
   useEffect(() => {
@@ -89,7 +106,7 @@ export const CandidatePreview = memo(function CandidatePreview({
   return (
     <div
       className={cn(
-        "relative aspect-video overflow-hidden rounded-2xl bg-editor",
+        "relative aspect-video overflow-hidden rounded-[var(--assessment-radius)] bg-editor",
         className,
       )}
     >
@@ -102,7 +119,7 @@ export const CandidatePreview = memo(function CandidatePreview({
           className="size-full object-cover [transform:scaleX(-1)]"
         />
       ) : (
-        <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_25%,#39256b_0%,#101923_72%)]">
+        <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_25%,#303531_0%,#111412_72%)]">
           <div className="grid size-12 place-items-center rounded-full bg-white/10 text-xs font-semibold text-white ring-1 ring-white/15">
             AC
           </div>
@@ -142,29 +159,26 @@ export function AIOrb({
 }) {
   const labels = {
     speaking: "Maya is asking",
-    listening: "Answer capture is active",
-    thinking: "Response captured",
+    listening: "Maya is listening",
+    thinking: "Maya is ready",
   };
 
   return (
     <div className="flex flex-col items-center">
       <div
         className={cn(
-          "ai-orb short-mobile-orb relative grid place-items-center rounded-full",
+          "short-mobile-orb grid shrink-0 place-items-center rounded-full bg-ink text-white",
           size === "large" ? "size-20 sm:size-24 xl:size-28" : "size-16",
-          state !== "thinking" && "ai-orb-active",
         )}
+        aria-hidden="true"
       >
-        <div className="absolute inset-[8%] rounded-full border border-white/35 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.96),rgba(32,227,230,0.72)_25%,rgba(88,38,202,0.9)_62%,rgba(34,9,84,0.98)_100%)] shadow-inner" />
-        <div className="relative z-10 text-white">
-          {state === "thinking" ? <Check className="size-5" /> : <SoundBars />}
-        </div>
+        {state === "thinking" ? <Check className="size-6" /> : <SoundBars />}
       </div>
-      <div className="mt-3 flex items-center gap-2 text-xs font-medium text-muted" aria-live="polite">
+      <div className="mt-3 flex items-center gap-2 text-xs font-medium text-muted">
         <span
           className={cn(
             "size-1.5 rounded-full",
-            state === "listening" ? "bg-danger" : "bg-brand",
+            state === "listening" ? "bg-danger" : state === "thinking" ? "bg-success" : "bg-ink",
           )}
         />
         {labels[state]}
@@ -173,14 +187,23 @@ export function AIOrb({
   );
 }
 
-export function SecureHeader({ label = "Secure assessment" }: { label?: string }) {
+export function SecureHeader({
+  label = "Secure assessment",
+  compactLabel,
+}: {
+  label?: string;
+  compactLabel?: string;
+}) {
   return (
     <header className="room-header shrink-0 border-b border-line bg-surface/95 backdrop-blur-xl">
       <div className="mx-auto flex h-full w-full max-w-[1520px] items-center justify-between px-[var(--assessment-outer)]">
         <PossoLogo />
-        <div className="flex items-center gap-2 text-xs font-semibold text-muted">
+        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted">
           <LockKeyhole className="size-3.5 text-brand" />
-          {label}
+          <span className={cn("max-w-[52vw] truncate", compactLabel && "hidden sm:inline")}>
+            {label}
+          </span>
+          {compactLabel && <span className="sm:hidden">{compactLabel}</span>}
         </div>
       </div>
     </header>
@@ -218,9 +241,6 @@ export function RoomHeader({
           <span className="flex items-center gap-1.5">
             <Mic className="size-3.5 text-brand" /> Mic
           </span>
-          <Badge className="border border-line">
-            <ShieldCheck className="size-3" /> Proctored
-          </Badge>
         </div>
         <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft lg:hidden">
           <span className="size-1.5 rounded-full bg-danger" /> Live
@@ -240,14 +260,14 @@ export function LockedDeviceStatus({ compact = false, className }: { compact?: b
       )}
       aria-label="Required devices are locked on"
     >
-      <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft px-3 py-2.5">
+      <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-soft px-3 py-2.5">
         <Camera className="size-4 text-brand" />
         <div>
           <p className="text-xs font-semibold text-ink-soft">Camera</p>
           <p className="text-[11px] text-muted">Locked on</p>
         </div>
       </div>
-      <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft px-3 py-2.5">
+      <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-soft px-3 py-2.5">
         <Mic className="size-4 text-brand" />
         <div>
           <p className="text-xs font-semibold text-ink-soft">Microphone</p>
@@ -271,8 +291,8 @@ export function AnswerStatus({
 }) {
   if (mode === "asking") {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-soft px-4 py-3 text-left" aria-live="polite">
-        <span className="grid size-9 place-items-center rounded-full bg-brand-soft text-brand">
+      <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-soft px-4 py-3 text-left">
+        <span className="grid size-9 place-items-center rounded-md bg-brand text-white">
           <AudioLines className="size-4" />
         </span>
         <div>
@@ -285,17 +305,16 @@ export function AnswerStatus({
 
   if (mode === "saved") {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-xl bg-brand-soft px-4 py-3 text-sm font-semibold text-brand" aria-live="polite">
+      <div className="flex items-center justify-center gap-2 rounded-lg bg-success-soft px-4 py-3 text-sm font-semibold text-success">
         <CheckCircle2 className="size-4" /> Response captured
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-stretch gap-3 rounded-xl border border-line bg-surface-soft px-4 py-3 text-left lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-      <span className="sr-only" aria-live="polite">Answer recording started.</span>
+    <div className="flex flex-col items-stretch gap-3 rounded-lg border border-line bg-surface-soft px-4 py-3 text-left lg:flex-row lg:items-center lg:justify-between lg:gap-4">
       <div className="flex items-center gap-3">
-        <span className="relative grid size-9 place-items-center rounded-full bg-brand-soft text-brand">
+        <span className="relative grid size-9 place-items-center rounded-md bg-brand text-white">
           <Mic className="size-4" />
           <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border-2 border-surface-soft bg-danger" />
         </span>
@@ -304,32 +323,110 @@ export function AnswerStatus({
           <p className="mt-0.5 font-mono text-xs text-muted">{formatTime(elapsed)}</p>
         </div>
       </div>
-      <Button size="sm" className="h-11 w-full lg:h-9 lg:w-auto" onClick={onDone}>
+      <Button size="sm" className="h-11 w-full lg:w-auto" onClick={onDone}>
         <Check /> {doneLabel}
       </Button>
     </div>
   );
 }
 
-export function IntegrityDialog({ issue, onReconnect }: { issue: string; onReconnect: () => void }) {
+export function IntegrityDialog({
+  issue,
+  onReconnect,
+  title = "Required device disconnected",
+  actionLabel = "Reconnect devices",
+  busyLabel = "Reconnecting...",
+  guidance = "Reconnect the device to keep this attempt valid. Camera and microphone cannot be disabled during the assessment.",
+  busy = false,
+  error = "",
+}: {
+  issue: string;
+  onReconnect: () => void | Promise<void>;
+  title?: string;
+  actionLabel?: string;
+  busyLabel?: string;
+  guidance?: string;
+  busy?: boolean;
+  error?: string;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", trapFocus);
+    return () => {
+      document.removeEventListener("keydown", trapFocus);
+      const previousFocus = previousFocusRef.current;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, []);
 
   useEffect(() => {
     buttonRef.current?.focus();
   }, [issue]);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-editor/75 p-5 backdrop-blur-md" role="alertdialog" aria-modal="true" aria-labelledby="integrity-title" aria-describedby="integrity-description">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-7 text-center shadow-float">
-        <div className="mx-auto grid size-12 place-items-center rounded-full bg-danger-soft text-danger">
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 z-50 grid place-items-center bg-editor/75 p-5 backdrop-blur-md"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="integrity-title"
+      aria-describedby={`integrity-description integrity-guidance${error ? " integrity-reconnect-error" : ""}`}
+      aria-busy={busy}
+      tabIndex={-1}
+    >
+      <div className="w-full max-w-md rounded-[var(--assessment-radius)] border border-line bg-surface p-7 text-center shadow-float">
+        <div className="mx-auto grid size-12 place-items-center rounded-lg bg-danger-soft text-danger">
           <ShieldCheck className="size-5" />
         </div>
-        <h2 id="integrity-title" className="mt-4 text-lg font-semibold text-ink">Required device disconnected</h2>
+        <h2 id="integrity-title" className="mt-4 text-lg font-semibold text-ink">{title}</h2>
         <p id="integrity-description" className="mt-2 text-sm leading-6 text-muted">{issue}</p>
-        <p className="mt-4 rounded-xl bg-surface-soft p-3 text-xs leading-5 text-muted">
-          Reconnect the device to keep this attempt valid. Camera and microphone cannot be disabled during the assessment.
+        <p id="integrity-guidance" className="mt-4 border-y border-line bg-surface-soft p-3 text-xs leading-5 text-muted">
+          {guidance}
         </p>
-        <Button ref={buttonRef} className="mt-5 w-full" onClick={onReconnect}>Reconnect devices</Button>
+        {error && (
+          <p id="integrity-reconnect-error" className="mt-3 text-sm leading-5 text-danger" role="alert">
+            {error}
+          </p>
+        )}
+        <Button ref={buttonRef} className="mt-5 w-full" onClick={onReconnect} disabled={busy}>
+          {busy && <LoaderCircle className="animate-spin" aria-hidden="true" />}
+          {busy ? busyLabel : actionLabel}
+        </Button>
       </div>
     </div>
   );

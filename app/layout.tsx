@@ -22,7 +22,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
-  themeColor: "#f3f4f1",
+  themeColor: "#f4f4f1",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

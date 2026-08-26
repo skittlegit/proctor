@@ -17,12 +17,14 @@ type MediaState = {
 type Action =
   | { type: "requesting" }
   | { type: "ready"; stream: MediaStream; devices: MediaDeviceInfo[]; camera: string; mic: string }
-  | { type: "failed"; error: string; keepReady: boolean }
+  | { type: "failed"; error: string }
   | { type: "devices"; devices: MediaDeviceInfo[] }
-  | { type: "camera"; id: string }
-  | { type: "mic"; id: string }
   | { type: "issue"; issue: string }
   | { type: "stopped" };
+
+type MediaRequestResult =
+  | { ok: true; stream: MediaStream }
+  | { ok: false; error: string };
 
 const initialState: MediaState = {
   status: "idle",
@@ -50,13 +52,9 @@ function reducer(state: MediaState, action: Action): MediaState {
         integrityIssue: "",
       };
     case "failed":
-      return { ...state, status: action.keepReady ? "ready" : "unavailable", error: action.error };
+      return { ...state, status: "unavailable", error: action.error };
     case "devices":
       return { ...state, devices: action.devices };
-    case "camera":
-      return { ...state, selectedCamera: action.id };
-    case "mic":
-      return { ...state, selectedMic: action.id };
     case "issue":
       return { ...state, integrityIssue: action.issue };
     case "stopped":
@@ -68,23 +66,59 @@ function stopTracks(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
+function describeMediaError(error: unknown) {
+  if (error instanceof DOMException) {
+    switch (error.name) {
+      case "NotAllowedError":
+      case "PermissionDeniedError":
+        return "Camera or microphone access is blocked. Allow both devices for this site in your browser settings, then try again.";
+      case "NotFoundError":
+      case "DevicesNotFoundError":
+        return "A camera and microphone were not both found. Connect both devices, then try again.";
+      case "NotReadableError":
+      case "TrackStartError":
+      case "AbortError":
+        return "A required device is busy or unavailable. Close other apps using your camera or microphone, reconnect it, then try again.";
+      case "OverconstrainedError":
+      case "ConstraintNotSatisfiedError":
+        return "The selected device is no longer available. Choose a connected camera or microphone, then try again.";
+      case "SecurityError":
+        return "This browser blocked secure media access. Open the assessment in a secure browser window, allow both devices, then try again.";
+      default:
+        break;
+    }
+  }
+
+  if (error instanceof Error && error.message) return error.message;
+  return "We couldn't connect both required devices. Check your camera and microphone, then try again.";
+}
+
 export function useMediaSession(assessmentActive: boolean) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const streamRef = useRef<MediaStream | null>(null);
   const selectionRef = useRef({ camera: "", mic: "" });
   const requestIdRef = useRef(0);
+  const intentionallyStoppedTracksRef = useRef(new WeakSet<MediaStreamTrack>());
+
+  const stopSessionTracks = useCallback((stream: MediaStream | null) => {
+    stream?.getTracks().forEach((track) => {
+      intentionallyStoppedTracksRef.current.add(track);
+      track.stop();
+    });
+  }, []);
 
   const stop = useCallback(() => {
     requestIdRef.current += 1;
-    stopTracks(streamRef.current);
+    stopSessionTracks(streamRef.current);
     streamRef.current = null;
     dispatch({ type: "stopped" });
-  }, []);
+  }, [stopSessionTracks]);
 
-  const request = useCallback(async (cameraId?: string, micId?: string) => {
+  const request = useCallback(async (cameraId?: string, micId?: string): Promise<MediaRequestResult> => {
     const requestedCamera = cameraId ?? selectionRef.current.camera;
     const requestedMic = micId ?? selectionRef.current.mic;
     const requestId = ++requestIdRef.current;
+    let pendingStream: MediaStream | null = null;
     dispatch({ type: "requesting" });
 
     try {
@@ -96,10 +130,11 @@ export function useMediaSession(assessmentActive: boolean) {
         video: requestedCamera ? { deviceId: { exact: requestedCamera } } : true,
         audio: requestedMic ? { deviceId: { exact: requestedMic } } : true,
       });
+      pendingStream = nextStream;
 
       if (requestId !== requestIdRef.current) {
         stopTracks(nextStream);
-        return;
+        return { ok: false, error: "A newer device check replaced this request." };
       }
 
       const videoTrack = nextStream.getVideoTracks()[0];
@@ -112,34 +147,32 @@ export function useMediaSession(assessmentActive: boolean) {
       const availableDevices = await navigator.mediaDevices.enumerateDevices();
       if (requestId !== requestIdRef.current) {
         stopTracks(nextStream);
-        return;
+        return { ok: false, error: "A newer device check replaced this request." };
       }
 
       const activeCamera = videoTrack.getSettings().deviceId || requestedCamera;
       const activeMic = audioTrack.getSettings().deviceId || requestedMic;
       const previousStream = streamRef.current;
       streamRef.current = nextStream;
+      pendingStream = null;
       selectionRef.current = { camera: activeCamera, mic: activeMic };
       dispatch({ type: "ready", stream: nextStream, devices: availableDevices, camera: activeCamera, mic: activeMic });
-      stopTracks(previousStream);
+      stopSessionTracks(previousStream);
+      return { ok: true, stream: nextStream };
     } catch (error) {
-      if (requestId !== requestIdRef.current) return;
-      const message = error instanceof Error ? error.message : "Required devices are unavailable.";
-      const currentStream = streamRef.current;
-      const keepReady = Boolean(currentStream?.getTracks().every((track) => track.readyState === "live"));
-      dispatch({ type: "failed", error: message, keepReady });
+      stopTracks(pendingStream);
+      const message = describeMediaError(error);
+      if (requestId !== requestIdRef.current) return { ok: false, error: message };
+      dispatch({ type: "failed", error: message });
+      return { ok: false, error: message };
     }
-  }, []);
+  }, [stopSessionTracks]);
 
   const changeCamera = useCallback((id: string) => {
-    selectionRef.current.camera = id;
-    dispatch({ type: "camera", id });
     void request(id, selectionRef.current.mic);
   }, [request]);
 
   const changeMic = useCallback((id: string) => {
-    selectionRef.current.mic = id;
-    dispatch({ type: "mic", id });
     void request(selectionRef.current.camera, id);
   }, [request]);
 
@@ -157,8 +190,14 @@ export function useMediaSession(assessmentActive: boolean) {
     const stream = state.stream;
     if (!assessmentActive || !stream) return;
 
-    const onVideoLost = () => dispatch({ type: "issue", issue: "The camera connection was lost. This assessment requires continuous video." });
-    const onAudioLost = () => dispatch({ type: "issue", issue: "The microphone connection was lost. This assessment requires continuous audio." });
+    const onVideoLost = (event: Event) => {
+      if (event.currentTarget instanceof MediaStreamTrack && intentionallyStoppedTracksRef.current.has(event.currentTarget)) return;
+      dispatch({ type: "issue", issue: "The camera connection was lost. This assessment requires continuous video." });
+    };
+    const onAudioLost = (event: Event) => {
+      if (event.currentTarget instanceof MediaStreamTrack && intentionallyStoppedTracksRef.current.has(event.currentTarget)) return;
+      dispatch({ type: "issue", issue: "The microphone connection was lost. This assessment requires continuous audio." });
+    };
     const videoTracks = stream.getVideoTracks();
     const audioTracks = stream.getAudioTracks();
 
@@ -187,7 +226,7 @@ export function useMediaSession(assessmentActive: boolean) {
 
   useEffect(() => {
     const stopOnExit = () => {
-      stopTracks(streamRef.current);
+      stopSessionTracks(streamRef.current);
       streamRef.current = null;
     };
     window.addEventListener("pagehide", stopOnExit);
@@ -195,7 +234,7 @@ export function useMediaSession(assessmentActive: boolean) {
       window.removeEventListener("pagehide", stopOnExit);
       stopOnExit();
     };
-  }, []);
+  }, [stopSessionTracks]);
 
   return { ...state, request, changeCamera, changeMic, stop };
 }

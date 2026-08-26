@@ -46,6 +46,7 @@ type SessionAction =
   | { type: "countdown"; deadline: number }
   | { type: "begin-interview" }
   | { type: "answer-started"; startedAt: number }
+  | { type: "answer-reset" }
   | { type: "answer-saved" }
   | { type: "next-question" }
   | { type: "begin-coding"; deadline: number }
@@ -78,6 +79,8 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       return { ...state, stage: "conversation", countdownDeadline: null, answerMode: "asking", answerStartedAt: null };
     case "answer-started":
       return { ...state, answerMode: "answering", answerStartedAt: action.startedAt };
+    case "answer-reset":
+      return { ...state, answerMode: "asking", answerStartedAt: null };
     case "answer-saved":
       return { ...state, answerMode: "saved", answerStartedAt: null };
     case "next-question":
@@ -98,9 +101,51 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
 function StageLoading() {
   return (
     <main className="grid h-dvh place-items-center bg-canvas text-ink">
-      <div className="flex flex-col items-center gap-4"><PossoLogo /><span className="size-5 animate-spin rounded-full border-2 border-line border-t-brand" /><p className="text-sm text-muted">Preparing the next section...</p></div>
+      <div className="flex flex-col items-center gap-4" role="status" aria-live="polite" aria-busy="true">
+        <PossoLogo />
+        <span className="size-5 animate-spin rounded-full border-2 border-line border-t-brand" aria-hidden="true" />
+        <p className="text-sm text-muted">Preparing the next section...</p>
+      </div>
     </main>
   );
+}
+
+type ActiveRecording = {
+  recorder: MediaRecorder;
+  stream: MediaStream;
+  chunks: Blob[];
+  responseKey: string;
+  failed: boolean;
+};
+
+type RecorderStartResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+function hasLiveCaptureTracks(stream: MediaStream | null | undefined): stream is MediaStream {
+  if (!stream) return false;
+  const videoTrack = stream.getVideoTracks()[0];
+  const audioTrack = stream.getAudioTracks()[0];
+  return Boolean(
+    videoTrack
+    && audioTrack
+    && videoTrack.readyState === "live"
+    && audioTrack.readyState === "live"
+    && videoTrack.enabled
+    && audioTrack.enabled
+    && !videoTrack.muted
+    && !audioTrack.muted
+  );
+}
+
+function describeRecorderError(error?: unknown) {
+  if (typeof MediaRecorder === "undefined") {
+    return "This browser cannot securely record your answer. Open the assessment in the latest Chrome or Edge, then retry capture.";
+  }
+  if (error instanceof DOMException && error.name === "NotSupportedError") {
+    return "This browser cannot use the available camera and microphone format. Open the assessment in the latest Chrome or Edge, then retry capture.";
+  }
+  return "Your answer was not recorded. Check that your camera and microphone are connected, then retry capture and answer from the beginning.";
 }
 
 function useAccurateClock(enabled: boolean, interval: number) {
@@ -123,12 +168,16 @@ function useAccurateClock(enabled: boolean, interval: number) {
 
 export default function InterviewExperience() {
   const [session, dispatch] = useReducer(sessionReducer, initialSession);
+  const [captureIssue, setCaptureIssue] = useState("");
+  const [captureRetryError, setCaptureRetryError] = useState("");
+  const [captureRetrying, setCaptureRetrying] = useState(false);
   const assessmentActive = ["countdown", "conversation", "coding", "explanation"].includes(session.stage);
   const media = useMediaSession(assessmentActive);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const recorderChunksRef = useRef<Blob[]>([]);
+  const stopMedia = media.stop;
+  const stageRootRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<ActiveRecording | null>(null);
   const responseBlobsRef = useRef<Map<string, Blob>>(new Map());
-  const responseKeyRef = useRef("");
+  const pendingResponseKeyRef = useRef("");
   const transitionTimerRef = useRef<number | null>(null);
   const testTimerRef = useRef<number | null>(null);
   const transitioningRef = useRef(false);
@@ -146,46 +195,96 @@ export default function InterviewExperience() {
     return "";
   }, [session.questionIndex, session.stage]);
 
-  const startAnswerRecorder = useCallback((responseKey: string) => {
-    const stream = media.stream;
-    if (!stream || typeof MediaRecorder === "undefined") return false;
+  const startAnswerRecorder = useCallback((responseKey: string, streamOverride?: MediaStream): RecorderStartResult => {
+    pendingResponseKeyRef.current = responseKey;
+    const stream = streamOverride ?? media.stream;
+    if (!hasLiveCaptureTracks(stream)) {
+      return {
+        ok: false,
+        error: "Answer capture could not start because a live camera and microphone were not detected. Reconnect both devices, then retry capture.",
+      };
+    }
+    if (typeof MediaRecorder === "undefined") return { ok: false, error: describeRecorderError() };
 
     try {
       const preferredType = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type));
       const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
-      recorderChunksRef.current = [];
-      responseKeyRef.current = responseKey;
+      const active: ActiveRecording = { recorder, stream, chunks: [], responseKey, failed: false };
+
       recorder.addEventListener("dataavailable", (event) => {
-        if (event.data.size > 0) recorderChunksRef.current.push(event.data);
+        if (!active.failed && event.data.size > 0) active.chunks.push(event.data);
       });
-      recorder.addEventListener("stop", () => {
-        const blob = new Blob(recorderChunksRef.current, { type: recorder.mimeType || "video/webm" });
-        if (blob.size > 0) responseBlobsRef.current.set(responseKeyRef.current, blob);
-        recorderChunksRef.current = [];
-      }, { once: true });
+      recorder.addEventListener("error", () => {
+        if (active.failed) return;
+        active.failed = true;
+        active.chunks = [];
+        responseBlobsRef.current.delete(active.responseKey);
+        if (recorderRef.current === active) recorderRef.current = null;
+        dispatch({ type: "answer-reset" });
+        setCaptureRetryError("");
+        setCaptureIssue(describeRecorderError());
+      });
+
       recorder.start(500);
-      recorderRef.current = recorder;
+      recorderRef.current = active;
+      setCaptureIssue("");
+      setCaptureRetryError("");
       dispatch({ type: "answer-started", startedAt: Date.now() });
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: describeRecorderError(error) };
     }
   }, [media.stream]);
 
-  const stopAnswerRecorder = useCallback(() => {
-    const recorder = recorderRef.current;
+  const stopAnswerRecorder = useCallback((): Promise<Blob | null> => {
+    const active = recorderRef.current;
     recorderRef.current = null;
-    if (!recorder || recorder.state === "inactive") return;
-    try {
-      recorder.requestData();
-      recorder.stop();
-    } catch {
-      // The device lifecycle will surface an integrity issue when capture is interrupted.
-    }
+    if (!active) return Promise.resolve(null);
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (blob: Blob | null) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        if (blob) responseBlobsRef.current.set(active.responseKey, blob);
+        resolve(blob);
+      };
+      const finalize = () => {
+        if (active.failed || !hasLiveCaptureTracks(active.stream)) {
+          settle(null);
+          return;
+        }
+        const blob = new Blob(active.chunks, { type: active.recorder.mimeType || "video/webm" });
+        active.chunks = [];
+        settle(blob.size > 0 ? blob : null);
+      };
+      const fail = () => {
+        active.failed = true;
+        active.chunks = [];
+        responseBlobsRef.current.delete(active.responseKey);
+        settle(null);
+      };
+      const timeout = window.setTimeout(fail, 4_000);
+
+      if (active.recorder.state === "inactive") {
+        finalize();
+        return;
+      }
+
+      active.recorder.addEventListener("stop", finalize, { once: true });
+      active.recorder.addEventListener("error", fail, { once: true });
+      try {
+        active.recorder.requestData();
+        active.recorder.stop();
+      } catch {
+        fail();
+      }
+    });
   }, []);
 
   useEffect(() => {
-    if (!activePrompt || session.answerMode !== "asking") return;
+    if (!activePrompt || session.answerMode !== "asking" || captureIssue || media.integrityIssue) return;
     let cancelled = false;
     let started = false;
     let fallbackTimer = 0;
@@ -195,8 +294,10 @@ export default function InterviewExperience() {
     const beginAnswer = () => {
       if (cancelled || started) return;
       started = true;
-      if (!startAnswerRecorder(responseKey)) {
-        dispatch({ type: "answer-started", startedAt: Date.now() });
+      const result = startAnswerRecorder(responseKey);
+      if (!result.ok) {
+        setCaptureRetryError("");
+        setCaptureIssue(result.error);
       }
     };
 
@@ -218,7 +319,53 @@ export default function InterviewExperience() {
       window.clearTimeout(fallbackTimer);
       window.speechSynthesis?.cancel();
     };
-  }, [activePrompt, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder]);
+  }, [activePrompt, captureIssue, media.integrityIssue, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder]);
+
+  const retryAnswerCapture = useCallback(async () => {
+    if (captureRetrying) return;
+    setCaptureRetrying(true);
+    setCaptureRetryError("");
+
+    try {
+      let stream = media.stream;
+      if (media.integrityIssue || !hasLiveCaptureTracks(stream)) {
+        const result = await media.request();
+        if (!result.ok) {
+          setCaptureRetryError(result.error);
+          return;
+        }
+        stream = result.stream;
+      }
+
+      const responseKey = pendingResponseKeyRef.current
+        || (session.stage === "conversation" ? `spoken-${session.questionIndex + 1}` : "walkthrough");
+      const result = startAnswerRecorder(responseKey, stream ?? undefined);
+      if (!result.ok) {
+        setCaptureRetryError(result.error);
+        return;
+      }
+
+      setCaptureIssue("");
+      setCaptureRetryError("");
+    } finally {
+      setCaptureRetrying(false);
+    }
+  }, [captureRetrying, media, session.questionIndex, session.stage, startAnswerRecorder]);
+
+  useEffect(() => {
+    if (!media.integrityIssue || session.answerMode !== "answering") return;
+    const active = recorderRef.current;
+    if (!active) return;
+
+    active.failed = true;
+    active.chunks = [];
+    pendingResponseKeyRef.current = active.responseKey;
+    responseBlobsRef.current.delete(active.responseKey);
+    void stopAnswerRecorder();
+    dispatch({ type: "answer-reset" });
+    setCaptureRetryError("");
+    setCaptureIssue("Answer capture stopped when a required device disconnected. Reconnect both devices, then retry capture and answer from the beginning.");
+  }, [media.integrityIssue, session.answerMode, stopAnswerRecorder]);
 
   useEffect(() => {
     if (session.stage !== "countdown" || !session.countdownDeadline) return;
@@ -280,15 +427,22 @@ export default function InterviewExperience() {
   }, [session.stage]);
 
   useEffect(() => () => {
-    stopAnswerRecorder();
+    void stopAnswerRecorder();
     if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
     if (testTimerRef.current) window.clearTimeout(testTimerRef.current);
   }, [stopAnswerRecorder]);
 
-  const finishConversationAnswer = useCallback(() => {
+  const finishConversationAnswer = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
     transitioningRef.current = true;
-    stopAnswerRecorder();
+    const response = await stopAnswerRecorder();
+    if (!response) {
+      transitioningRef.current = false;
+      dispatch({ type: "answer-reset" });
+      setCaptureRetryError("");
+      setCaptureIssue(describeRecorderError());
+      return;
+    }
     dispatch({ type: "answer-saved" });
     transitionTimerRef.current = window.setTimeout(() => {
       transitioningRef.current = false;
@@ -304,46 +458,116 @@ export default function InterviewExperience() {
     testTimerRef.current = window.setTimeout(() => dispatch({ type: "test-status", status: "passed" }), 700);
   }, [session.testStatus]);
 
-  const finishInterview = useCallback(() => {
+  const finishInterview = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
     transitioningRef.current = true;
-    stopAnswerRecorder();
+    const response = await stopAnswerRecorder();
+    if (!response) {
+      transitioningRef.current = false;
+      dispatch({ type: "answer-reset" });
+      setCaptureRetryError("");
+      setCaptureIssue(describeRecorderError());
+      return;
+    }
     dispatch({ type: "complete" });
-    media.stop();
+    stopMedia();
     try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
-  }, [media, session.answerMode, stopAnswerRecorder]);
+  }, [session.answerMode, stopAnswerRecorder, stopMedia]);
 
   const goBack = () => {
-    media.stop();
+    stopMedia();
     dispatch({ type: "stage", stage: "welcome" });
   };
 
+  const announcement = useMemo(() => {
+    if (captureIssue) return "Answer capture is blocked. Follow the recovery instructions in the dialog.";
+    if (assessmentActive && media.integrityIssue) return "The assessment is blocked because a required device disconnected.";
+    if (media.status === "requesting") return "Checking camera and microphone access.";
+    if (session.stage === "setup" && media.status === "ready") return "Camera and microphone are ready.";
+    if (session.stage === "setup" && media.status === "unavailable") return media.error;
+
+    switch (session.stage) {
+      case "welcome":
+        return "Interview invitation ready.";
+      case "setup":
+        return "Device setup ready.";
+      case "countdown":
+        return `Interview begins in ${countdown}.`;
+      case "conversation":
+        if (session.answerMode === "asking") return `Question ${session.questionIndex + 1}. Maya is asking the question.`;
+        if (session.answerMode === "answering") return `Answer capture started for question ${session.questionIndex + 1}.`;
+        return `Answer ${session.questionIndex + 1} captured.`;
+      case "coding":
+        if (session.testStatus === "running") return "Preparing the sample preview.";
+        if (session.testStatus === "passed") return "Sample preview ready.";
+        return "Coding section ready.";
+      case "explanation":
+        if (session.answerMode === "asking") return "Maya is asking for your code explanation.";
+        if (session.answerMode === "answering") return "Code explanation capture started.";
+        return "Code explanation captured.";
+      case "complete":
+        return "Interview finished.";
+    }
+  }, [assessmentActive, captureIssue, countdown, media.error, media.integrityIssue, media.status, session.answerMode, session.questionIndex, session.stage, session.testStatus]);
+
+  const dialogOpen = Boolean(captureIssue || (assessmentActive && media.integrityIssue));
+
+  useEffect(() => {
+    const root = stageRootRef.current;
+    if (!root) return;
+    root.toggleAttribute("inert", dialogOpen);
+    return () => root.removeAttribute("inert");
+  }, [dialogOpen]);
+
   return (
     <>
-      {session.stage === "welcome" && <WelcomeStage onContinue={() => dispatch({ type: "stage", stage: "setup" })} />}
-      {session.stage === "setup" && (
-        <SetupStage
-          mediaStatus={media.status}
-          mediaError={media.error}
-          stream={media.stream}
-          devices={media.devices}
-          selectedCamera={media.selectedCamera}
-          selectedMic={media.selectedMic}
-          consent={session.consent}
-          onConsentChange={(consent) => dispatch({ type: "consent", consent })}
-          onCameraChange={media.changeCamera}
-          onMicChange={media.changeMic}
-          onRequestMedia={() => void media.request()}
-          onBack={goBack}
-          onStart={() => dispatch({ type: "countdown", deadline: Date.now() + 3000 })}
+      <div ref={stageRootRef} className="contents" aria-hidden={dialogOpen || undefined}>
+        {session.stage === "welcome" && <WelcomeStage onContinue={() => dispatch({ type: "stage", stage: "setup" })} />}
+        {session.stage === "setup" && (
+          <SetupStage
+            mediaStatus={media.status}
+            mediaError={media.error}
+            stream={media.stream}
+            devices={media.devices}
+            selectedCamera={media.selectedCamera}
+            selectedMic={media.selectedMic}
+            consent={session.consent}
+            onConsentChange={(consent) => dispatch({ type: "consent", consent })}
+            onCameraChange={media.changeCamera}
+            onMicChange={media.changeMic}
+            onRequestMedia={() => void media.request()}
+            onBack={goBack}
+            onStart={() => dispatch({ type: "countdown", deadline: Date.now() + 3000 })}
+          />
+        )}
+        {session.stage === "countdown" && <CountdownStage count={countdown} />}
+        {session.stage === "conversation" && <ConversationStage questionIndex={session.questionIndex} answerMode={session.answerMode} answerElapsed={answerElapsed} stream={media.stream} onFinishAnswer={finishConversationAnswer} />}
+        {session.stage === "coding" && <CodingStage code={session.code} timeRemaining={codeTimeRemaining} testStatus={session.testStatus} stream={media.stream} onCodeChange={(code) => dispatch({ type: "code", code })} onRunTests={runTests} onSubmit={() => dispatch({ type: "begin-explanation" })} />}
+        {session.stage === "explanation" && <ExplanationStage code={session.code} answerMode={session.answerMode} answerElapsed={answerElapsed} stream={media.stream} onFinish={finishInterview} />}
+        {session.stage === "complete" && <CompleteStage />}
+      </div>
+
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
+
+      {captureIssue ? (
+        <IntegrityDialog
+          title="Answer capture interrupted"
+          issue={captureIssue}
+          guidance="No answer has been saved. Retry capture, then answer the visible question from the beginning and select Done when you finish."
+          actionLabel="Retry answer capture"
+          busyLabel="Retrying capture..."
+          busy={captureRetrying}
+          error={captureRetryError}
+          onReconnect={retryAnswerCapture}
         />
-      )}
-      {session.stage === "countdown" && <CountdownStage count={countdown} />}
-      {session.stage === "conversation" && <ConversationStage questionIndex={session.questionIndex} answerMode={session.answerMode} answerElapsed={answerElapsed} stream={media.stream} onFinishAnswer={finishConversationAnswer} />}
-      {session.stage === "coding" && <CodingStage code={session.code} timeRemaining={codeTimeRemaining} testStatus={session.testStatus} stream={media.stream} onCodeChange={(code) => dispatch({ type: "code", code })} onRunTests={runTests} onSubmit={() => dispatch({ type: "begin-explanation" })} />}
-      {session.stage === "explanation" && <ExplanationStage code={session.code} answerMode={session.answerMode} answerElapsed={answerElapsed} stream={media.stream} onFinish={finishInterview} />}
-      {session.stage === "complete" && <CompleteStage />}
-      {assessmentActive && media.integrityIssue && <IntegrityDialog issue={media.integrityIssue} onReconnect={() => void media.request()} />}
+      ) : assessmentActive && media.integrityIssue ? (
+        <IntegrityDialog
+          issue={media.integrityIssue}
+          busy={media.status === "requesting"}
+          error={media.status === "unavailable" ? media.error : ""}
+          onReconnect={async () => { await media.request(); }}
+        />
+      ) : null}
     </>
   );
 }

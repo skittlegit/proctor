@@ -1,27 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f6f7;
-  --foreground: #0b1620;
-  --surface: #fdfdfd;
-  --surface-soft: #f0f2f4;
-  --surface-strong: #e6e9ed;
-  --ink-soft: #34414b;
-  --muted: #5f6d76;
-  --line: #dfe3e7;
-  --brand: #6400d8;
-  --brand-hover: #5000b3;
-  --brand-soft: #efe7ff;
-  --signal: #11cbd1;
-  --danger: #b65347;
-  --danger-soft: #fff0ed;
-  --editor: #0b1620;
-  --editor-soft: #111f2a;
+  --background: #f4f4f1;
+  --foreground: #111311;
+  --surface: #fbfbf9;
+  --surface-soft: #eeefeb;
+  --surface-strong: #e2e4df;
+  --ink-soft: #343834;
+  --muted: #626862;
+  --line: #d8dbd5;
+  --brand: #171a18;
+  --brand-hover: #050605;
+  --brand-soft: #e7e9e4;
+  --signal: #515a55;
+  --success: #176b49;
+  --success-soft: #e7f3ec;
+  --warning: #955a18;
+  --warning-soft: #fff3df;
+  --danger: #a63d35;
+  --danger-soft: #fbeae8;
+  --editor: #111412;
+  --editor-soft: #191d1a;
   --shell-header: 60px;
   --assessment-outer: 1rem;
   --assessment-gap: 1rem;
   --assessment-panel-pad: 1.25rem;
-  --assessment-radius: 1.25rem;
+  --assessment-radius: 0.875rem;
   --assessment-rail: clamp(17.5rem, 22vw, 20rem);
   --assessment-frame-max: 47.5rem;
   --shell-total-header: calc(var(--shell-header) + env(safe-area-inset-top));
@@ -42,12 +46,16 @@
   --color-brand-hover: var(--brand-hover);
   --color-brand-soft: var(--brand-soft);
   --color-signal: var(--signal);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-editor: var(--editor);
   --color-editor-soft: var(--editor-soft);
-  --shadow-card: 0 10px 34px rgba(9, 20, 29, 0.055);
-  --shadow-float: 0 18px 60px rgba(9, 20, 29, 0.1);
+  --shadow-card: 0 0 #0000;
+  --shadow-float: 0 20px 64px rgba(17, 19, 17, 0.18);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: Georgia, "Times New Roman", serif;
@@ -78,7 +86,7 @@ body {
     --assessment-outer: 0.75rem;
     --assessment-gap: 0.75rem;
     --assessment-panel-pad: 1rem;
-    --assessment-radius: 1rem;
+    --assessment-radius: 0.75rem;
   }
 }
 
@@ -137,10 +145,6 @@ body {
   padding-left: max(var(--assessment-outer), env(safe-area-inset-left));
 }
 
-.mobile-action-bar {
-  padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
-}
-
 .stage-focus:focus {
   outline: none;
 }
@@ -169,6 +173,10 @@ body {
     padding-right: max(1rem, env(safe-area-inset-right));
     padding-left: max(1rem, env(safe-area-inset-left));
   }
+
+  .mobile-action-bar {
+    padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+  }
 }
 
 button {
@@ -184,36 +192,6 @@ button:disabled {
   animation: sound-wave 920ms ease-in-out var(--bar-delay, 0ms) infinite alternate;
 }
 
-.ai-orb::before,
-.ai-orb::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-}
-
-.ai-orb::before {
-  background: conic-gradient(
-    from 120deg,
-    rgba(112, 0, 232, 0.2),
-    rgba(32, 227, 230, 0.48),
-    rgba(139, 101, 227, 0.2),
-    rgba(112, 0, 232, 0.2)
-  );
-  filter: blur(1px);
-  animation: orb-drift 9s linear infinite;
-}
-
-.ai-orb::after {
-  inset: -12%;
-  background: radial-gradient(circle, rgba(112, 0, 232, 0.14), transparent 66%);
-  z-index: -1;
-}
-
-.ai-orb-active::after {
-  animation: orb-pulse 1.8s ease-in-out infinite;
-}
-
 .countdown-ring {
   animation: countdown-breathe 2.4s ease-in-out infinite;
 }
@@ -225,24 +203,6 @@ button:disabled {
   }
   100% {
     height: 92%;
-    opacity: 1;
-  }
-}
-
-@keyframes orb-drift {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes orb-pulse {
-  0%,
-  100% {
-    transform: scale(0.98);
-    opacity: 0.55;
-  }
-  50% {
-    transform: scale(1.12);
     opacity: 1;
   }
 }

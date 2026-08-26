@@ -20,12 +20,12 @@ export function Progress({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={normalizedValue}
-      className={cn("h-1 w-full overflow-hidden rounded-full bg-surface-strong", className)}
+      className={cn("h-1 w-full overflow-hidden bg-surface-strong", className)}
       {...props}
     >
       <div
         className={cn(
-          "h-full rounded-full bg-brand transition-[width] duration-500 ease-out",
+          "h-full bg-brand transition-[width] duration-500 ease-out",
           indicatorClassName,
         )}
         style={{ width: `${normalizedValue}%` }}
