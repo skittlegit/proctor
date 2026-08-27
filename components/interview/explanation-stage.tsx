@@ -24,7 +24,7 @@ export default function ExplanationStage({
 
   return (
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
-      <RoomHeader label="Walkthrough / Question 4 of 4" detail="Approximately 3 minutes remaining" progress={86} />
+      <RoomHeader label="Walkthrough / Question 4 of 4" detail="3 min left" progress={86} />
       <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)] lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
         <section className="hidden overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor md:order-1 md:flex md:h-full md:min-h-0 md:flex-col">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-[var(--assessment-panel-pad)] text-white/70">
@@ -43,19 +43,25 @@ export default function ExplanationStage({
             <span className="text-xs font-medium text-muted">Question 4 of 4</span>
           </div>
 
-          <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-[var(--assessment-panel-pad)] text-center sm:gap-4">
-            <AIOrb state={orbState} size="small" />
-            <div className="max-w-xl">
-              <h1 tabIndex={-1} data-stage-heading className="stage-focus short-mobile-question short-screen-question font-serif text-[clamp(1.65rem,2.3vw,2.25rem)] leading-tight font-medium tracking-[-0.03em] text-ink">&ldquo;Walk me through your approach and one tradeoff you considered.&rdquo;</h1>
-              <p className="short-mobile-hide short-screen-hide mt-3 text-sm leading-6 text-muted">Your submitted code stays visible while your response is captured.</p>
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-start gap-3 overflow-hidden p-[var(--assessment-panel-pad)] text-center md:justify-center md:gap-4 md:overflow-y-auto">
+            <div className="grid w-full shrink-0 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 text-left md:flex md:max-w-xl md:flex-col md:text-center">
+              <AIOrb state={orbState} size="small" />
+              <div>
+                <h1 tabIndex={-1} data-stage-heading className="stage-focus short-screen-question font-serif text-xl leading-[1.15] font-medium tracking-[-0.03em] text-ink md:text-[clamp(1.65rem,2.3vw,2.25rem)] md:leading-tight">&ldquo;Walk me through your approach and one tradeoff you considered.&rdquo;</h1>
+                <p className="short-screen-hide mt-3 hidden text-sm leading-6 text-muted md:block">Your submitted code stays visible while your response is captured.</p>
+              </div>
             </div>
-            <details className="group w-full max-w-xl border-y border-line text-left open:absolute open:inset-[var(--assessment-panel-pad)] open:z-10 open:flex open:w-auto open:max-w-none open:flex-col open:overflow-hidden open:rounded-lg open:border open:bg-surface open:shadow-float md:hidden">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-1 text-xs font-semibold text-ink-soft outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center gap-2"><FileCode2 className="size-4" /> View submitted solution</span>
-                <Badge tone="neutral">Read only</Badge>
-              </summary>
-              <pre className="max-h-36 overflow-auto border-t border-line bg-editor p-3 font-mono text-xs leading-5 whitespace-pre text-white/85 group-open:min-h-0 group-open:flex-1 group-open:max-h-none">{code}</pre>
-            </details>
+
+            <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor text-left md:hidden" aria-label="Submitted solution, read only">
+              <div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-white/70">
+                <span className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-3.5" /> Submitted solution</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/50">Read only</span>
+              </div>
+              <div className="grid min-h-0 flex-1 grid-cols-[36px_minmax(0,1fr)] overflow-hidden">
+                <div className="select-none overflow-hidden border-r border-white/10 bg-editor-soft py-2.5 pr-2 text-right font-mono text-[10px] leading-5 text-white/40">{code.split("\n").map((_, index) => <div key={index}>{index + 1}</div>)}</div>
+                <pre className="overflow-auto p-2.5 font-mono text-xs leading-5 whitespace-pre text-white/85">{code}</pre>
+              </div>
+            </section>
           </div>
 
           <div className="shrink-0 border-t border-line p-3 lg:p-[var(--assessment-panel-pad)]">
@@ -71,7 +77,7 @@ export default function ExplanationStage({
                 <span className="flex items-center gap-1.5" aria-label="Microphone on"><Mic className="size-3.5" /><span className="hidden md:inline">Microphone on</span></span>
               </div>
             </div>
-            <CandidatePreview stream={stream} className="w-full rounded-lg" />
+            <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />
           </div>
         </section>
       </AssessmentFrame>

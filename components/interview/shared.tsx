@@ -5,6 +5,7 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  Clock3,
   LoaderCircle,
   LockKeyhole,
   Mic,
@@ -106,7 +107,7 @@ export const CandidatePreview = memo(function CandidatePreview({
   return (
     <div
       className={cn(
-        "relative aspect-video overflow-hidden rounded-[var(--assessment-radius)] bg-editor",
+        "relative isolate aspect-video overflow-hidden rounded-[var(--assessment-radius)] bg-editor [clip-path:inset(0_round_var(--assessment-radius))]",
         className,
       )}
     >
@@ -231,13 +232,13 @@ export function RoomHeader({
         <PossoLogo responsiveCompact />
         <div className="hidden h-7 w-px bg-line md:block" />
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center justify-between gap-4">
-            <div className="truncate text-xs font-semibold text-ink-soft">{label}</div>
-            <span className="hidden shrink-0 text-xs text-muted xl:inline">{detail}</span>
-          </div>
+          <div className="truncate text-xs font-semibold text-ink-soft">{label}</div>
           <Progress value={progress} className="mt-1.5 max-w-sm" aria-label="Assessment progress" />
         </div>
         <div className="hidden items-center gap-4 text-xs font-semibold text-ink-soft lg:flex">
+          <span className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-soft px-2.5 py-1.5 font-medium text-muted">
+            <Clock3 className="size-3.5" /> {detail}
+          </span>
           <span className="flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-danger" /> Proctoring active
           </span>

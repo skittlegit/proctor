@@ -1,7 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import {
+  addTransitionType,
   startTransition,
   useCallback,
   useEffect,
@@ -12,6 +12,8 @@ import {
   ViewTransition,
 } from "react";
 
+import CodingStage from "@/components/interview/coding-stage";
+import CompleteStage from "@/components/interview/complete-stage";
 import {
   assessment,
   CODE_DRAFT_KEY,
@@ -20,22 +22,11 @@ import {
   type Stage,
   type TestStatus,
 } from "@/components/interview/config";
+import ConversationStage from "@/components/interview/conversation-stage";
 import { CountdownStage, SetupStage, WelcomeStage } from "@/components/interview/entry-stages";
-import { IntegrityDialog, PossoLogo } from "@/components/interview/shared";
+import ExplanationStage from "@/components/interview/explanation-stage";
+import { IntegrityDialog } from "@/components/interview/shared";
 import { useMediaSession } from "@/components/interview/use-media-session";
-
-const ConversationStage = dynamic(() => import("@/components/interview/conversation-stage"), {
-  loading: () => <StageLoading />,
-});
-const CodingStage = dynamic(() => import("@/components/interview/coding-stage"), {
-  loading: () => <StageLoading />,
-});
-const ExplanationStage = dynamic(() => import("@/components/interview/explanation-stage"), {
-  loading: () => <StageLoading />,
-});
-const CompleteStage = dynamic(() => import("@/components/interview/complete-stage"), {
-  loading: () => <StageLoading />,
-});
 
 type SessionState = {
   stage: Stage;
@@ -63,6 +54,16 @@ type SessionAction =
   | { type: "test-status"; status: TestStatus }
   | { type: "begin-explanation" }
   | { type: "complete" };
+
+type StageTransition =
+  | "assessment-open"
+  | "assessment-back"
+  | "assessment-launch"
+  | "assessment-live"
+  | "assessment-question"
+  | "assessment-workspace"
+  | "assessment-handoff"
+  | "assessment-complete";
 
 const initialSession: SessionState = {
   stage: "welcome",
@@ -105,18 +106,6 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
     case "complete":
       return { ...state, stage: "complete", answerMode: "saved", answerStartedAt: null };
   }
-}
-
-function StageLoading() {
-  return (
-    <main className="grid h-dvh place-items-center bg-canvas text-ink">
-      <div className="flex flex-col items-center gap-4" role="status" aria-live="polite" aria-busy="true">
-        <PossoLogo />
-        <span className="size-5 animate-spin rounded-full border-2 border-line border-t-brand" aria-hidden="true" />
-        <p className="text-sm text-muted">Preparing the next section...</p>
-      </div>
-    </main>
-  );
 }
 
 type ActiveRecording = {
@@ -191,8 +180,25 @@ export default function InterviewExperience() {
   const testTimerRef = useRef<number | null>(null);
   const transitioningRef = useRef(false);
 
-  const dispatchWithTransition = useCallback((action: SessionAction) => {
-    startTransition(() => dispatch(action));
+  const dispatchWithTransition = useCallback((action: SessionAction, transition: StageTransition) => {
+    startTransition(() => {
+      addTransitionType(transition);
+      dispatch(action);
+    });
+  }, []);
+
+  const unlockSpeechSynthesis = useCallback(() => {
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+    const synthesis = window.speechSynthesis;
+    synthesis.cancel();
+    synthesis.resume();
+    void synthesis.getVoices();
+
+    // Mobile browsers often require speech to be initialized inside a user gesture.
+    const unlockUtterance = new SpeechSynthesisUtterance(" ");
+    unlockUtterance.volume = 0.01;
+    unlockUtterance.rate = 10;
+    synthesis.speak(unlockUtterance);
   }, []);
 
   const clockEnabled = session.stage === "countdown" || session.stage === "coding" || session.answerMode === "answering";
@@ -301,6 +307,9 @@ export default function InterviewExperience() {
     let cancelled = false;
     let started = false;
     let fallbackTimer = 0;
+    let speechStarted = false;
+    let speechAttempt = 0;
+    const resumeTimers: number[] = [];
     const schedule = window.setTimeout.bind(window);
     const responseKey = session.stage === "conversation" ? `spoken-${session.questionIndex + 1}` : "walkthrough";
 
@@ -315,14 +324,56 @@ export default function InterviewExperience() {
     };
 
     if ("speechSynthesis" in window && "SpeechSynthesisUtterance" in window) {
-      const utterance = new SpeechSynthesisUtterance(activePrompt);
-      utterance.rate = 0.94;
-      utterance.pitch = 1.02;
-      utterance.onend = beginAnswer;
-      utterance.onerror = beginAnswer;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
+      const synthesis = window.speechSynthesis;
+      const speakPrompt = () => {
+        if (cancelled) return;
+        speechAttempt += 1;
+        const utterance = new SpeechSynthesisUtterance(activePrompt);
+        const voices = synthesis.getVoices();
+        const voice = voices.find((candidate) => candidate.lang.toLowerCase().startsWith("en") && candidate.localService)
+          ?? voices.find((candidate) => candidate.lang.toLowerCase().startsWith("en"));
+        if (voice) utterance.voice = voice;
+        utterance.lang = voice?.lang || "en-US";
+        utterance.rate = 0.94;
+        utterance.pitch = 1.02;
+        utterance.volume = 1;
+        utterance.onstart = () => { speechStarted = true; };
+        utterance.onend = beginAnswer;
+        utterance.onerror = (event) => {
+          if (cancelled || event.error === "canceled" || event.error === "interrupted") return;
+          if (!speechStarted && speechAttempt < 2) {
+            resumeTimers.push(schedule(speakPrompt, 120));
+            return;
+          }
+          beginAnswer();
+        };
+
+        synthesis.cancel();
+        synthesis.resume();
+        synthesis.speak(utterance);
+      };
+
+      speakPrompt();
+      [100, 450, 1_200].forEach((delay) => {
+        resumeTimers.push(schedule(() => synthesis.resume(), delay));
+      });
+      resumeTimers.push(schedule(() => {
+        if (!speechStarted && !synthesis.speaking && speechAttempt < 2) speakPrompt();
+      }, 1_000));
+
+      const resumeWhenVisible = () => {
+        if (document.visibilityState === "visible") synthesis.resume();
+      };
+      document.addEventListener("visibilitychange", resumeWhenVisible);
       fallbackTimer = schedule(beginAnswer, 30_000);
+
+      return () => {
+        cancelled = true;
+        window.clearTimeout(fallbackTimer);
+        resumeTimers.forEach((timer) => window.clearTimeout(timer));
+        document.removeEventListener("visibilitychange", resumeWhenVisible);
+        synthesis.cancel();
+      };
     } else {
       fallbackTimer = schedule(beginAnswer, 500);
     }
@@ -330,7 +381,6 @@ export default function InterviewExperience() {
     return () => {
       cancelled = true;
       window.clearTimeout(fallbackTimer);
-      window.speechSynthesis?.cancel();
     };
   }, [activePrompt, captureIssue, media.integrityIssue, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder]);
 
@@ -383,14 +433,14 @@ export default function InterviewExperience() {
   useEffect(() => {
     if (session.stage !== "countdown" || !session.countdownDeadline) return;
     const delay = Math.max(0, session.countdownDeadline - Date.now());
-    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-interview" }), delay);
+    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-interview" }, "assessment-live"), delay);
     return () => window.clearTimeout(timer);
   }, [dispatchWithTransition, session.countdownDeadline, session.stage]);
 
   useEffect(() => {
     if (session.stage !== "coding" || !session.codeDeadline) return;
     const delay = Math.max(0, session.codeDeadline - Date.now());
-    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-explanation" }), delay);
+    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-explanation" }, "assessment-handoff"), delay);
     return () => window.clearTimeout(timer);
   }, [dispatchWithTransition, session.codeDeadline, session.stage]);
 
@@ -433,12 +483,6 @@ export default function InterviewExperience() {
     return () => observer.disconnect();
   }, [session.stage, session.questionIndex]);
 
-  useEffect(() => {
-    if (session.stage === "countdown") void import("@/components/interview/conversation-stage");
-    if (session.stage === "conversation") void import("@/components/interview/coding-stage");
-    if (session.stage === "coding") void import("@/components/interview/explanation-stage");
-  }, [session.stage]);
-
   useEffect(() => () => {
     void stopAnswerRecorder();
     if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
@@ -459,8 +503,8 @@ export default function InterviewExperience() {
     dispatch({ type: "answer-saved" });
     transitionTimerRef.current = window.setTimeout(() => {
       transitioningRef.current = false;
-      if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" });
-      else dispatchWithTransition({ type: "begin-coding", deadline: Date.now() + assessment.codingSeconds * 1000 });
+      if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" }, "assessment-question");
+      else dispatchWithTransition({ type: "begin-coding", deadline: Date.now() + assessment.codingSeconds * 1000 }, "assessment-workspace");
     }, 550);
   }, [dispatchWithTransition, session.answerMode, session.questionIndex, stopAnswerRecorder]);
 
@@ -482,14 +526,14 @@ export default function InterviewExperience() {
       setCaptureIssue(describeRecorderError());
       return;
     }
-    dispatchWithTransition({ type: "complete" });
+    dispatchWithTransition({ type: "complete" }, "assessment-complete");
     stopMedia();
     try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
   }, [dispatchWithTransition, session.answerMode, stopAnswerRecorder, stopMedia]);
 
   const goBack = () => {
     stopMedia();
-    dispatchWithTransition({ type: "stage", stage: "welcome" });
+    dispatchWithTransition({ type: "stage", stage: "welcome" }, "assessment-back");
   };
 
   const announcement = useMemo(() => {
@@ -541,15 +585,23 @@ export default function InterviewExperience() {
         <ViewTransition
           key={transitionKey}
           name="assessment-stage"
-          share="assessment-stage-swap"
-          enter="assessment-stage-swap"
-          exit="assessment-stage-swap"
+          share={{
+            "assessment-open": "assessment-open",
+            "assessment-back": "assessment-back",
+            "assessment-launch": "assessment-launch",
+            "assessment-live": "assessment-live",
+            "assessment-question": "assessment-question",
+            "assessment-workspace": "assessment-workspace",
+            "assessment-handoff": "assessment-handoff",
+            "assessment-complete": "assessment-complete",
+            default: "assessment-stage-swap",
+          }}
           default="none"
         >
           <div className="assessment-stage">
             {session.stage === "welcome" && (
               <WelcomeStage
-                onContinue={() => dispatchWithTransition({ type: "stage", stage: "setup" })}
+                onContinue={() => dispatchWithTransition({ type: "stage", stage: "setup" }, "assessment-open")}
               />
             )}
             {session.stage === "setup" && (
@@ -566,7 +618,10 @@ export default function InterviewExperience() {
                 onMicChange={media.changeMic}
                 onRequestMedia={() => void media.request()}
                 onBack={goBack}
-                onStart={() => dispatchWithTransition({ type: "countdown", deadline: Date.now() + 3000 })}
+                onStart={() => {
+                  unlockSpeechSynthesis();
+                  dispatchWithTransition({ type: "countdown", deadline: Date.now() + 3000 }, "assessment-launch");
+                }}
               />
             )}
             {session.stage === "countdown" && <CountdownStage count={countdown} />}
@@ -587,7 +642,7 @@ export default function InterviewExperience() {
                 stream={media.stream}
                 onCodeChange={(code) => dispatch({ type: "code", code })}
                 onRunTests={runTests}
-                onSubmit={() => dispatchWithTransition({ type: "begin-explanation" })}
+                onSubmit={() => dispatchWithTransition({ type: "begin-explanation" }, "assessment-handoff")}
               />
             )}
             {session.stage === "explanation" && (

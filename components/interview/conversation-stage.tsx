@@ -26,7 +26,7 @@ export default function ConversationStage({
 
   return (
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
-      <RoomHeader label={`Interview / Question ${questionIndex + 1} of 4`} detail="Approximately 27 minutes remaining" progress={24 + questionIndex * 14} />
+      <RoomHeader label={`Interview / Question ${questionIndex + 1} of 4`} detail="27 min left" progress={24 + questionIndex * 14} />
       <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_var(--assessment-rail)]">
         <section className="flex h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-[var(--assessment-panel-pad)]">
@@ -57,7 +57,7 @@ export default function ConversationStage({
               <span className="flex items-center gap-2 font-medium text-ink-soft"><span className={cn("size-1.5 rounded-full", answerMode === "answering" ? "bg-danger" : answerMode === "saved" ? "bg-success" : "bg-muted")} /> <span className="truncate">{answerMode === "answering" ? "Answer capture is active" : "Proctoring remains active"}</span></span>
               <span className="mt-1.5 flex items-center gap-4 md:mt-0"><span className="flex items-center gap-1.5"><Camera className="size-3.5" /> Camera on</span><span className="flex items-center gap-1.5"><Mic className="size-3.5" /> Mic on</span></span>
             </div>
-            <CandidatePreview stream={stream} className="w-full rounded-lg md:hidden" />
+            <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)] md:hidden" />
           </div>
         </section>
 

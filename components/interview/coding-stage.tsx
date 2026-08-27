@@ -84,7 +84,7 @@ export default function CodingStage({
 }) {
   return (
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
-      <RoomHeader label="Coding / Question 3 of 4" detail="Timed code workspace" progress={66} />
+      <RoomHeader label="Coding / Question 3 of 4" detail="12 min workspace" progress={66} />
       <AssessmentFrame className="md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[var(--assessment-rail)_minmax(0,1fr)]">
         <section className="flex max-h-[18rem] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:max-h-none">
           <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line px-[var(--assessment-panel-pad)]">
@@ -117,7 +117,7 @@ export default function CodingStage({
 
           <div className="shrink-0 border-t border-line p-[var(--assessment-panel-pad)]">
             <div className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-3 md:hidden">
-              <CandidatePreview stream={stream} className="w-full rounded-lg" />
+              <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />
               <div className="space-y-2 text-xs text-muted">
                 <span className="flex items-center gap-2"><Camera className="size-3.5" /> Camera on</span>
                 <span className="flex items-center gap-2"><Mic className="size-3.5" /> Microphone on</span>
