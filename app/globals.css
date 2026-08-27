@@ -157,6 +157,17 @@ body {
   outline: none;
 }
 
+.candidate-preview,
+.candidate-preview > video {
+  border-radius: var(--assessment-radius);
+  overflow: hidden;
+  clip-path: inset(0 round var(--assessment-radius));
+}
+
+.candidate-preview {
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
 .assessment-stage {
   width: 100%;
   min-width: 0;

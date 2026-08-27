@@ -4,23 +4,26 @@ import { Camera, FileCode2, Mic } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 
-import { type AnswerMode } from "./config";
+import { codeLanguages, type AnswerMode, type CodeLanguage } from "./config";
 import { AIOrb, AnswerStatus, AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
 
 export default function ExplanationStage({
   code,
+  language,
   answerMode,
   answerElapsed,
   stream,
   onFinish,
 }: {
   code: string;
+  language: CodeLanguage;
   answerMode: AnswerMode;
   answerElapsed: number;
   stream: MediaStream | null;
   onFinish: () => void;
 }) {
   const orbState = answerMode === "asking" ? "speaking" : answerMode === "answering" ? "listening" : "thinking";
+  const languageConfig = codeLanguages[language];
 
   return (
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
@@ -28,8 +31,8 @@ export default function ExplanationStage({
       <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)] lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
         <section className="hidden overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor md:order-1 md:flex md:h-full md:min-h-0 md:flex-col">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-[var(--assessment-panel-pad)] text-white/70">
-            <div className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-4" /> Submitted solution</div>
-            <Badge className="bg-white/10 text-white/75">Read only</Badge>
+            <div className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-4" /> {languageConfig.fileName}</div>
+            <Badge className="bg-white/10 text-white/75">{languageConfig.label} · Read only</Badge>
           </div>
           <div className="grid flex-1 grid-cols-[46px_minmax(0,1fr)] overflow-hidden lg:min-h-0">
             <div className="select-none border-r border-white/10 bg-editor-soft py-4 pr-3 text-right font-mono text-xs leading-6 text-white/50">{code.split("\n").map((_, index) => <div key={index}>{index + 1}</div>)}</div>
@@ -54,8 +57,8 @@ export default function ExplanationStage({
 
             <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor text-left md:hidden" aria-label="Submitted solution, read only">
               <div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-white/70">
-                <span className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-3.5" /> Submitted solution</span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/50">Read only</span>
+                <span className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-3.5" /> {languageConfig.fileName}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/50">{languageConfig.label} · Read only</span>
               </div>
               <div className="grid min-h-0 flex-1 grid-cols-[36px_minmax(0,1fr)] overflow-hidden">
                 <div className="select-none overflow-hidden border-r border-white/10 bg-editor-soft py-2.5 pr-2 text-right font-mono text-[10px] leading-5 text-white/40">{code.split("\n").map((_, index) => <div key={index}>{index + 1}</div>)}</div>

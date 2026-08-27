@@ -2,6 +2,7 @@
 
 import {
   Camera,
+  ChevronDown,
   Clock3,
   FileCode2,
   Gauge,
@@ -16,10 +17,10 @@ import { memo, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-import { formatTime, type TestStatus } from "./config";
+import { assessment, codeLanguages, formatTime, type CodeLanguage, type TestStatus } from "./config";
 import { AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
 
-const CodeEditor = memo(function CodeEditor({ code, onChange }: { code: string; onChange: (value: string) => void }) {
+const CodeEditor = memo(function CodeEditor({ code, languageLabel, onChange }: { code: string; languageLabel: string; onChange: (value: string) => void }) {
   const lineNumbers = useMemo(() => Array.from({ length: code.split("\n").length }, (_, index) => index + 1), [code]);
   const insertsTabs = useRef(true);
   const [keyboardMessage, setKeyboardMessage] = useState("");
@@ -28,7 +29,7 @@ const CodeEditor = memo(function CodeEditor({ code, onChange }: { code: string; 
     <div className="relative grid min-h-[46svh] flex-1 grid-cols-[36px_minmax(0,1fr)] overflow-hidden bg-editor text-white sm:min-h-[380px] sm:grid-cols-[46px_minmax(0,1fr)] md:min-h-0">
       <div aria-hidden="true" className="select-none border-r border-white/10 bg-editor-soft py-3 pr-2 text-right font-mono text-xs leading-6 text-white/50 sm:py-4 sm:pr-3">{lineNumbers.map((line) => <div key={line}>{line}</div>)}</div>
       <textarea
-        aria-label="TypeScript code editor"
+        aria-label={`${languageLabel} code editor`}
         aria-describedby="editor-keyboard-help editor-keyboard-status"
         value={code}
         onChange={(event) => onChange(event.target.value)}
@@ -67,21 +68,27 @@ const CodeEditor = memo(function CodeEditor({ code, onChange }: { code: string; 
 
 export default function CodingStage({
   code,
+  language,
   timeRemaining,
   testStatus,
   stream,
   onCodeChange,
+  onLanguageChange,
   onRunTests,
   onSubmit,
 }: {
   code: string;
+  language: CodeLanguage;
   timeRemaining: number;
   testStatus: TestStatus;
   stream: MediaStream | null;
   onCodeChange: (code: string) => void;
+  onLanguageChange: (language: CodeLanguage) => void;
   onRunTests: () => void;
   onSubmit: () => void;
 }) {
+  const languageConfig = codeLanguages[language];
+
   return (
     <main className="assessment-shell min-h-dvh bg-canvas text-ink">
       <RoomHeader label="Coding / Question 3 of 4" detail="12 min workspace" progress={66} />
@@ -132,11 +139,26 @@ export default function CodingStage({
 
         <section className="flex min-h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-w-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:min-h-0">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-[var(--assessment-panel-pad)]">
-            <div className="flex items-center gap-2 text-xs font-semibold text-ink-soft"><FileCode2 className="size-4" /> solution.ts <span className="font-normal text-muted">· TypeScript</span></div>
-            <span className="hidden text-xs font-medium text-muted min-[400px]:inline">Draft in progress</span>
+            <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-ink-soft">
+              <FileCode2 className="size-4 shrink-0" />
+              <span className="truncate">{languageConfig.fileName}</span>
+            </div>
+            <div className="relative ml-3 shrink-0">
+              <select
+                aria-label="Programming language"
+                value={language}
+                onChange={(event) => onLanguageChange(event.target.value as CodeLanguage)}
+                className="h-8 appearance-none rounded-lg border border-line bg-surface-soft pl-3 pr-8 text-xs font-semibold text-ink-soft outline-none transition-colors hover:border-ink-soft focus-visible:border-ink focus-visible:ring-2 focus-visible:ring-ink/15"
+              >
+                {assessment.codingLanguages.map((option) => (
+                  <option key={option} value={option}>{codeLanguages[option].label}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-2 size-3.5 text-muted" aria-hidden="true" />
+            </div>
           </div>
 
-          <CodeEditor code={code} onChange={onCodeChange} />
+          <CodeEditor key={language} code={code} languageLabel={languageConfig.label} onChange={onCodeChange} />
 
           <div className="shrink-0 border-t border-white/10 bg-editor text-white/80" role="status" aria-live="polite" aria-atomic="true">
             <div className="flex h-9 items-center justify-between border-b border-white/10 px-[var(--assessment-panel-pad)]">

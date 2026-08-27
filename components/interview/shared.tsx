@@ -107,9 +107,14 @@ export const CandidatePreview = memo(function CandidatePreview({
   return (
     <div
       className={cn(
-        "relative isolate aspect-video overflow-hidden rounded-[var(--assessment-radius)] bg-editor [clip-path:inset(0_round_var(--assessment-radius))]",
+        "candidate-preview relative isolate aspect-video overflow-hidden rounded-[var(--assessment-radius)] bg-editor",
         className,
       )}
+      style={{
+        borderRadius: "var(--assessment-radius)",
+        clipPath: "inset(0 round var(--assessment-radius))",
+        WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+      }}
     >
       {stream ? (
         <video
@@ -117,7 +122,7 @@ export const CandidatePreview = memo(function CandidatePreview({
           autoPlay
           muted
           playsInline
-          className="size-full -scale-x-100 transform-gpu object-cover [backface-visibility:hidden]"
+          className="size-full -scale-x-100 transform-gpu rounded-[inherit] object-cover [backface-visibility:hidden] [clip-path:inset(0_round_var(--assessment-radius))]"
         />
       ) : (
         <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_25%,#303531_0%,#111412_72%)]">

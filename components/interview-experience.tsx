@@ -17,8 +17,11 @@ import CompleteStage from "@/components/interview/complete-stage";
 import {
   assessment,
   CODE_DRAFT_KEY,
+  codeLanguages,
   starterCode,
+  starterCodeDrafts,
   type AnswerMode,
+  type CodeLanguage,
   type Stage,
   type TestStatus,
 } from "@/components/interview/config";
@@ -35,7 +38,9 @@ type SessionState = {
   questionIndex: number;
   answerMode: AnswerMode;
   answerStartedAt: number | null;
+  language: CodeLanguage;
   code: string;
+  codeDrafts: Record<CodeLanguage, string>;
   codeDeadline: number | null;
   testStatus: TestStatus;
 };
@@ -50,7 +55,9 @@ type SessionAction =
   | { type: "answer-saved" }
   | { type: "next-question" }
   | { type: "begin-coding"; deadline: number }
+  | { type: "language"; language: CodeLanguage }
   | { type: "code"; code: string }
+  | { type: "code-workspace"; language: CodeLanguage; drafts: Record<CodeLanguage, string> }
   | { type: "test-status"; status: TestStatus }
   | { type: "begin-explanation" }
   | { type: "complete" };
@@ -72,7 +79,9 @@ const initialSession: SessionState = {
   questionIndex: 0,
   answerMode: "asking",
   answerStartedAt: null,
+  language: "typescript",
   code: starterCode,
+  codeDrafts: { ...starterCodeDrafts },
   codeDeadline: null,
   testStatus: "idle",
 };
@@ -97,8 +106,12 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       return { ...state, questionIndex: state.questionIndex + 1, answerMode: "asking", answerStartedAt: null };
     case "begin-coding":
       return { ...state, stage: "coding", codeDeadline: action.deadline, answerMode: "saved", answerStartedAt: null, testStatus: "idle" };
+    case "language":
+      return { ...state, language: action.language, code: state.codeDrafts[action.language], testStatus: "idle" };
     case "code":
-      return { ...state, code: action.code };
+      return { ...state, code: action.code, codeDrafts: { ...state.codeDrafts, [state.language]: action.code } };
+    case "code-workspace":
+      return { ...state, language: action.language, code: action.drafts[action.language], codeDrafts: action.drafts };
     case "test-status":
       return { ...state, testStatus: action.status };
     case "begin-explanation":
@@ -204,7 +217,7 @@ export default function InterviewExperience() {
   const clockEnabled = session.stage === "countdown" || session.stage === "coding" || session.answerMode === "answering";
   const tickRate = session.stage === "countdown" ? 100 : 1000;
   const now = useAccurateClock(clockEnabled, tickRate);
-  const countdown = session.countdownDeadline ? Math.max(1, Math.ceil((session.countdownDeadline - now) / 1000)) : 3;
+  const countdown = session.countdownDeadline ? Math.min(3, Math.max(1, Math.ceil((session.countdownDeadline - now) / 1000))) : 3;
   const answerElapsed = session.answerStartedAt ? Math.max(0, Math.floor((now - session.answerStartedAt) / 1000)) : 0;
   const codeTimeRemaining = session.codeDeadline ? Math.max(0, Math.ceil((session.codeDeadline - now) / 1000)) : assessment.codingSeconds;
 
@@ -447,23 +460,43 @@ export default function InterviewExperience() {
   useEffect(() => {
     try {
       const draft = window.localStorage.getItem(CODE_DRAFT_KEY);
-      if (draft) dispatch({ type: "code", code: draft });
+      if (!draft) return;
+      try {
+        const saved = JSON.parse(draft) as { language?: unknown; drafts?: Partial<Record<CodeLanguage, unknown>> };
+        const savedLanguage = typeof saved.language === "string" ? saved.language : "";
+        const language: CodeLanguage = assessment.codingLanguages.some((option) => option === savedLanguage)
+          ? savedLanguage as CodeLanguage
+          : assessment.codingLanguages[0];
+        const drafts: Record<CodeLanguage, string> = {
+          typescript: typeof saved.drafts?.typescript === "string" ? saved.drafts.typescript : codeLanguages.typescript.starterCode,
+          javascript: typeof saved.drafts?.javascript === "string" ? saved.drafts.javascript : codeLanguages.javascript.starterCode,
+          python: typeof saved.drafts?.python === "string" ? saved.drafts.python : codeLanguages.python.starterCode,
+          java: typeof saved.drafts?.java === "string" ? saved.drafts.java : codeLanguages.java.starterCode,
+        };
+        dispatch({ type: "code-workspace", language, drafts });
+      } catch {
+        dispatch({ type: "code", code: draft });
+      }
     } catch {
       // Storage can be unavailable in privacy-focused browser modes.
     }
   }, []);
 
   useEffect(() => {
-    if (session.code === starterCode) return;
     const save = window.setTimeout(() => {
       const write = () => {
-        try { window.localStorage.setItem(CODE_DRAFT_KEY, session.code); } catch { /* no-op */ }
+        try {
+          window.localStorage.setItem(CODE_DRAFT_KEY, JSON.stringify({
+            language: session.language,
+            drafts: session.codeDrafts,
+          }));
+        } catch { /* no-op */ }
       };
       if ("requestIdleCallback" in window) window.requestIdleCallback(write, { timeout: 600 });
       else write();
     }, 400);
     return () => window.clearTimeout(save);
-  }, [session.code]);
+  }, [session.codeDrafts, session.language]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -637,10 +670,12 @@ export default function InterviewExperience() {
             {session.stage === "coding" && (
               <CodingStage
                 code={session.code}
+                language={session.language}
                 timeRemaining={codeTimeRemaining}
                 testStatus={session.testStatus}
                 stream={media.stream}
                 onCodeChange={(code) => dispatch({ type: "code", code })}
+                onLanguageChange={(language) => dispatch({ type: "language", language })}
                 onRunTests={runTests}
                 onSubmit={() => dispatchWithTransition({ type: "begin-explanation" }, "assessment-handoff")}
               />
@@ -648,6 +683,7 @@ export default function InterviewExperience() {
             {session.stage === "explanation" && (
               <ExplanationStage
                 code={session.code}
+                language={session.language}
                 answerMode={session.answerMode}
                 answerElapsed={answerElapsed}
                 stream={media.stream}
