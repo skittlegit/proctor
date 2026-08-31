@@ -17,8 +17,22 @@ export const assessment = {
   role: "Frontend Engineer",
   candidate: "Alex Chen",
   durationMinutes: 35,
-  codingSeconds: 12 * 60,
   codingLanguages: ["typescript", "javascript"] satisfies CodeLanguage[],
+  codingChallenge: {
+    title: "First unique character",
+    description:
+      "Return the index of the first character that appears exactly once. Return -1 if none exists.",
+    examples: [
+      { input: "leetcode", output: "0" },
+      { input: "loveleetcode", output: "2" },
+      { input: "aabb", output: "-1" },
+    ],
+    constraints: [
+      "The input contains 1 to 100,000 characters",
+      "The input contains lowercase English letters",
+      "Aim for linear time and linear or better auxiliary space",
+    ],
+  },
   questions: [
     {
       label: "Introduction",

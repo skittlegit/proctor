@@ -7,7 +7,7 @@ type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
 };
 
 const tones = {
-  sage: "bg-brand text-white",
+  sage: "bg-brand text-on-brand",
   neutral: "bg-surface-soft text-ink-soft",
   success: "bg-success-soft text-success",
   amber: "bg-warning-soft text-warning",

@@ -35,13 +35,13 @@ type SessionState = {
   stage: Stage;
   consent: boolean;
   countdownDeadline: number | null;
+  assessmentStartedAt: number | null;
   questionIndex: number;
   answerMode: AnswerMode;
   answerStartedAt: number | null;
   language: CodeLanguage;
   code: string;
   codeDrafts: Record<CodeLanguage, string>;
-  codeDeadline: number | null;
   testStatus: TestStatus;
 };
 
@@ -54,7 +54,7 @@ type SessionAction =
   | { type: "answer-reset" }
   | { type: "answer-saved" }
   | { type: "next-question" }
-  | { type: "begin-coding"; deadline: number }
+  | { type: "begin-coding" }
   | { type: "language"; language: CodeLanguage }
   | { type: "code"; code: string }
   | { type: "code-workspace"; language: CodeLanguage; drafts: Record<CodeLanguage, string> }
@@ -76,13 +76,13 @@ const initialSession: SessionState = {
   stage: "welcome",
   consent: false,
   countdownDeadline: null,
+  assessmentStartedAt: null,
   questionIndex: 0,
   answerMode: "asking",
   answerStartedAt: null,
   language: "typescript",
   code: starterCode,
   codeDrafts: { ...starterCodeDrafts },
-  codeDeadline: null,
   testStatus: "idle",
 };
 
@@ -93,7 +93,7 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
     case "consent":
       return { ...state, consent: action.consent };
     case "countdown":
-      return { ...state, stage: "countdown", countdownDeadline: action.deadline };
+      return { ...state, stage: "countdown", countdownDeadline: action.deadline, assessmentStartedAt: action.deadline };
     case "begin-interview":
       return { ...state, stage: "conversation", countdownDeadline: null, answerMode: "asking", answerStartedAt: null };
     case "answer-started":
@@ -105,7 +105,7 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
     case "next-question":
       return { ...state, questionIndex: state.questionIndex + 1, answerMode: "asking", answerStartedAt: null };
     case "begin-coding":
-      return { ...state, stage: "coding", codeDeadline: action.deadline, answerMode: "saved", answerStartedAt: null, testStatus: "idle" };
+      return { ...state, stage: "coding", answerMode: "saved", answerStartedAt: null, testStatus: "idle" };
     case "language":
       return { ...state, language: action.language, code: state.codeDrafts[action.language], testStatus: "idle" };
     case "code":
@@ -115,7 +115,7 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
     case "test-status":
       return { ...state, testStatus: action.status };
     case "begin-explanation":
-      return { ...state, stage: "explanation", codeDeadline: null, answerMode: "asking", answerStartedAt: null };
+      return { ...state, stage: "explanation", answerMode: "asking", answerStartedAt: null };
     case "complete":
       return { ...state, stage: "complete", answerMode: "saved", answerStartedAt: null };
   }
@@ -214,12 +214,12 @@ export default function InterviewExperience() {
     synthesis.speak(unlockUtterance);
   }, []);
 
-  const clockEnabled = session.stage === "countdown" || session.stage === "coding" || session.answerMode === "answering";
+  const clockEnabled = assessmentActive;
   const tickRate = session.stage === "countdown" ? 100 : 1000;
   const now = useAccurateClock(clockEnabled, tickRate);
   const countdown = session.countdownDeadline ? Math.min(3, Math.max(1, Math.ceil((session.countdownDeadline - now) / 1000))) : 3;
   const answerElapsed = session.answerStartedAt ? Math.max(0, Math.floor((now - session.answerStartedAt) / 1000)) : 0;
-  const codeTimeRemaining = session.codeDeadline ? Math.max(0, Math.ceil((session.codeDeadline - now) / 1000)) : assessment.codingSeconds;
+  const sessionElapsed = session.assessmentStartedAt ? Math.max(0, Math.floor((now - session.assessmentStartedAt) / 1000)) : 0;
 
   const activePrompt = useMemo(() => {
     if (session.stage === "conversation") return assessment.questions[session.questionIndex].prompt;
@@ -451,13 +451,6 @@ export default function InterviewExperience() {
   }, [dispatchWithTransition, session.countdownDeadline, session.stage]);
 
   useEffect(() => {
-    if (session.stage !== "coding" || !session.codeDeadline) return;
-    const delay = Math.max(0, session.codeDeadline - Date.now());
-    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-explanation" }, "assessment-handoff"), delay);
-    return () => window.clearTimeout(timer);
-  }, [dispatchWithTransition, session.codeDeadline, session.stage]);
-
-  useEffect(() => {
     try {
       const draft = window.localStorage.getItem(CODE_DRAFT_KEY);
       if (!draft) return;
@@ -500,20 +493,6 @@ export default function InterviewExperience() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-
-    const focusHeading = () => {
-      const heading = document.querySelector<HTMLElement>("[data-stage-heading]");
-      if (!heading) return false;
-      heading.focus({ preventScroll: true });
-      return true;
-    };
-
-    if (focusHeading()) return;
-    const observer = new MutationObserver(() => {
-      if (focusHeading()) observer.disconnect();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
   }, [session.stage, session.questionIndex]);
 
   useEffect(() => () => {
@@ -537,7 +516,7 @@ export default function InterviewExperience() {
     transitionTimerRef.current = window.setTimeout(() => {
       transitioningRef.current = false;
       if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" }, "assessment-question");
-      else dispatchWithTransition({ type: "begin-coding", deadline: Date.now() + assessment.codingSeconds * 1000 }, "assessment-workspace");
+      else dispatchWithTransition({ type: "begin-coding" }, "assessment-workspace");
     }, 550);
   }, [dispatchWithTransition, session.answerMode, session.questionIndex, stopAnswerRecorder]);
 
@@ -584,7 +563,7 @@ export default function InterviewExperience() {
       case "countdown":
         return `Interview begins in ${countdown}.`;
       case "conversation":
-        if (session.answerMode === "asking") return `Question ${session.questionIndex + 1}. Maya is asking the question.`;
+        if (session.answerMode === "asking") return `Question ${session.questionIndex + 1}. Sia is asking the question.`;
         if (session.answerMode === "answering") return `Answer capture started for question ${session.questionIndex + 1}.`;
         return `Answer ${session.questionIndex + 1} captured.`;
       case "coding":
@@ -592,7 +571,7 @@ export default function InterviewExperience() {
         if (session.testStatus === "passed") return "Sample preview ready.";
         return "Coding section ready.";
       case "explanation":
-        if (session.answerMode === "asking") return "Maya is asking for your code explanation.";
+        if (session.answerMode === "asking") return "Sia is asking for your code explanation.";
         if (session.answerMode === "answering") return "Code explanation capture started.";
         return "Code explanation captured.";
       case "complete":
@@ -614,6 +593,9 @@ export default function InterviewExperience() {
 
   return (
     <>
+      <a className="skip-link" href="#assessment-main">
+        Skip to Assessment
+      </a>
       <div ref={stageRootRef} className="contents" aria-hidden={dialogOpen || undefined}>
         <ViewTransition
           key={transitionKey}
@@ -663,6 +645,7 @@ export default function InterviewExperience() {
                 questionIndex={session.questionIndex}
                 answerMode={session.answerMode}
                 answerElapsed={answerElapsed}
+                sessionElapsed={sessionElapsed}
                 stream={media.stream}
                 onFinishAnswer={finishConversationAnswer}
               />
@@ -671,7 +654,7 @@ export default function InterviewExperience() {
               <CodingStage
                 code={session.code}
                 language={session.language}
-                timeRemaining={codeTimeRemaining}
+                sessionElapsed={sessionElapsed}
                 testStatus={session.testStatus}
                 stream={media.stream}
                 onCodeChange={(code) => dispatch({ type: "code", code })}
@@ -686,6 +669,7 @@ export default function InterviewExperience() {
                 language={session.language}
                 answerMode={session.answerMode}
                 answerElapsed={answerElapsed}
+                sessionElapsed={sessionElapsed}
                 stream={media.stream}
                 onFinish={finishInterview}
               />
@@ -703,7 +687,7 @@ export default function InterviewExperience() {
           issue={captureIssue}
           guidance="No answer has been saved. Retry capture, then answer the visible question from the beginning and select Done when you finish."
           actionLabel="Retry answer capture"
-          busyLabel="Retrying capture..."
+          busyLabel="Retrying capture…"
           busy={captureRetrying}
           error={captureRetryError}
           onReconnect={retryAnswerCapture}

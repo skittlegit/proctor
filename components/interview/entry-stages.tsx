@@ -6,7 +6,6 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
-  Clock3,
   LockKeyhole,
   Mic,
   RotateCcw,
@@ -18,120 +17,123 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { assessment, type MediaStatus } from "./config";
-import { CandidatePreview, SecureHeader } from "./shared";
+import { AssessmentContent, CandidatePreview, SecureHeader } from "./shared";
 
 export function WelcomeStage({ onContinue }: { onContinue: () => void }) {
   const agenda = [
-    ["01", "System check", "About 1 min"],
-    ["02", "Conversation", "2 spoken prompts"],
-    ["03", "Coding exercise", "12 minutes"],
-    ["04", "Code walkthrough", "About 3 min"],
+    ["Prepare", "Review the guidance before your session begins."],
+    ["Respond", "Follow each prompt and complete the activities shown."],
+    ["Finish", "Submit your final response when Sia lets you know you are done."],
   ];
 
   return (
-    <main className="assessment-shell min-h-dvh bg-canvas text-ink">
+    <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
       <SecureHeader
         label={`Secure invite / ${assessment.id}`}
         compactLabel={assessment.id}
       />
-      <div className="assessment-content shell-pad mx-auto flex min-h-[calc(100dvh-var(--shell-total-header))] w-full max-w-[1520px] flex-col md:min-h-0">
-        <div className="flex min-h-0 flex-1 items-center py-2 sm:py-3">
-          <div className="grid w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
-            <section className="px-5 py-7 sm:px-7 sm:py-9 lg:pl-10 lg:pr-12 xl:px-12 xl:py-11 xl:pr-16">
-              <div className="flex items-center gap-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-[11px]">
-                <span>Interview briefing</span>
-                <span className="h-px w-7 bg-line" aria-hidden="true" />
-                <span>{assessment.durationMinutes} min</span>
+      <AssessmentContent className="min-h-[calc(100dvh-var(--shell-total-header))] items-stretch md:min-h-0 md:items-center">
+          <div className="grid min-h-full w-full grid-rows-[minmax(0,1fr)_auto_auto] overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:min-h-[32rem] lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] lg:grid-rows-none">
+            <section className="flex flex-col px-5 py-6 sm:px-7 sm:py-9 lg:pl-10 lg:pr-12 xl:px-12 xl:py-11 xl:pr-16">
+              <div className="flex flex-1 flex-col justify-center">
+                <div className="flex items-center gap-3 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-[11px]">
+                  <span>Interview briefing</span>
+                </div>
+                <h1 className="mt-4 max-w-3xl font-serif text-[clamp(2.55rem,10.5vw,4.65rem)] leading-[0.98] font-medium tracking-[-0.05em] text-ink max-[374px]:text-[2.25rem] sm:text-[clamp(3.1rem,5vw,4.65rem)]">
+                  Your interview is ready.
+                </h1>
+                <p className="mt-4 max-w-xl text-sm leading-6 text-muted sm:mt-5 sm:text-[15px] sm:leading-7">
+                  Sia guides you through each step. Questions and activities may
+                  vary by interview.
+                </p>
+
+                <dl className="mt-5 grid max-w-xl grid-cols-1 border-y border-line sm:mt-6 sm:grid-cols-2">
+                  <div className="py-3 pr-4">
+                    <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
+                      Role
+                    </dt>
+                    <dd className="mt-1 truncate text-xs font-semibold text-ink-soft sm:text-sm">
+                      {assessment.role}
+                    </dd>
+                  </div>
+                  <div className="hidden border-l border-line py-3 pl-4 sm:block">
+                    <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
+                      Session
+                    </dt>
+                    <dd className="mt-1 truncate text-xs font-semibold text-ink-soft sm:text-sm">
+                      Secure guided interview
+                    </dd>
+                  </div>
+                </dl>
               </div>
-              <h1
-                tabIndex={-1}
-                data-stage-heading
-                className="stage-focus mt-4 max-w-3xl font-serif text-[clamp(2.55rem,10.5vw,4.65rem)] leading-[0.98] font-medium tracking-[-0.05em] text-ink max-[374px]:text-[2.25rem] sm:text-[clamp(3.1rem,5vw,4.65rem)]"
-              >
-                Ready when you are, Alex.
-              </h1>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-muted sm:mt-5 sm:text-[15px] sm:leading-7">
-                Maya leads a fixed set of questions. Each spoken response starts
-                recording as soon as the question ends.
-              </p>
 
-              <dl className="mt-6 grid max-w-xl grid-cols-2 border-y border-line">
-                <div className="py-3 pr-4">
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
-                    Candidate
-                  </dt>
-                  <dd className="mt-1 truncate text-xs font-semibold text-ink-soft sm:text-sm">
-                    {assessment.candidate}
-                  </dd>
-                </div>
-                <div className="border-l border-line py-3 pl-4">
-                  <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
-                    Role
-                  </dt>
-                  <dd className="mt-1 truncate text-xs font-semibold text-ink-soft sm:text-sm">
-                    {assessment.role}
-                  </dd>
-                </div>
-              </dl>
-
-              <Button
-                size="lg"
-                className="mt-6 h-11 w-full sm:w-auto sm:min-w-72"
-                onClick={onContinue}
-              >
-                Check your setup <ArrowRight />
-              </Button>
-              <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
-                <LockKeyhole className="size-3" /> Your timed interview has not
-                started.
-              </p>
+              <div className="mt-auto hidden pt-8 lg:block">
+                <Button
+                  size="lg"
+                  className="h-11 min-w-72"
+                  onClick={onContinue}
+                >
+                  Check your setup <ArrowRight />
+                </Button>
+                <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
+                  <LockKeyhole className="size-3" /> Your timed interview has not
+                  started.
+                </p>
+              </div>
             </section>
 
             <section
-              className="flex flex-col border-t border-line px-5 py-6 sm:px-7 lg:border-t-0 lg:border-l lg:px-10 lg:py-9 xl:px-12 xl:py-11"
+              className="flex flex-col border-t border-line px-5 py-5 sm:px-7 sm:py-6 lg:border-t-0 lg:border-l lg:px-10 lg:py-9 xl:px-12 xl:py-11"
               aria-label="Interview agenda"
             >
-              <div className="flex items-end justify-between gap-4 pb-3">
+              <div className="flex items-end justify-between gap-4 pb-3 sm:pb-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-[11px]">
                     Today&apos;s sequence
                   </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-[-0.025em] text-ink sm:text-2xl">
-                    Four guided sections
+                  <h2 className="mt-1 text-lg font-semibold tracking-[-0.025em] text-ink sm:text-2xl">
+                    A simple guided flow
                   </h2>
                 </div>
-                <Clock3 className="mb-1 size-4 text-ink-soft" />
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">3 steps</span>
               </div>
-              <ol className="border-t border-line">
-                {agenda.map(([number, title, detail]) => (
+              <ol className="grid grid-cols-3 border-y border-line sm:block sm:border-b-0 lg:flex lg:flex-1 lg:flex-col lg:justify-center">
+                {agenda.map(([title, detail], index) => (
                   <li
-                    key={number}
-                    className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-line py-2.5 sm:py-3"
+                    key={title}
+                    className="flex min-w-0 flex-col gap-1 border-r border-line px-3 py-3 first:pl-0 last:border-r-0 last:pr-0 sm:grid sm:grid-cols-[2rem_minmax(0,1fr)] sm:gap-3 sm:border-r-0 sm:border-b sm:px-0 sm:py-3.5 lg:py-5"
                   >
-                    <span className="font-mono text-[10px] font-semibold text-muted sm:text-[11px]">
-                      {number}
+                    <span className="font-mono text-[10px] font-semibold text-muted sm:text-[11px]" aria-hidden="true">
+                      {String(index + 1).padStart(2, "0")}
                     </span>
-                    <span className="text-sm font-semibold text-ink-soft">
-                      {title}
-                    </span>
-                    <span className="text-right text-[11px] text-muted sm:text-xs">
-                      {detail}
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink-soft">{title}</span>
+                      <span className="mt-1 hidden text-xs leading-5 text-muted sm:block">{detail}</span>
                     </span>
                   </li>
                 ))}
               </ol>
-              <p className="mt-auto border-t border-line pt-4 text-xs leading-5 text-muted">
-                Only the current section appears during the assessment.
+              <p className="mt-auto hidden border-t border-line pt-4 text-xs leading-5 text-muted sm:block">
+                Your session may include different question types. Sia will
+                introduce each one when it begins.
+              </p>
+            </section>
+
+            <section className="border-t border-line bg-surface-soft px-5 py-4 sm:px-7 sm:py-5 lg:hidden" aria-label="Begin interview setup">
+              <Button
+                size="lg"
+                className="h-11 w-full"
+                onClick={onContinue}
+              >
+                Check your setup <ArrowRight />
+              </Button>
+              <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-muted">
+                <LockKeyhole className="size-3" /> Your timed interview has not
+                started.
               </p>
             </section>
           </div>
-        </div>
-
-        <footer className="flex min-h-8 shrink-0 items-end justify-between gap-4 text-[10px] text-muted sm:text-[11px]">
-          <span>Camera and microphone are required.</span>
-          <span className="font-mono max-[359px]:hidden">Invite / {assessment.id}</span>
-        </footer>
-      </div>
+      </AssessmentContent>
     </main>
   );
 }
@@ -174,7 +176,7 @@ export function SetupStage({
   const canStart = consent && mediaStatus === "ready" && Boolean(stream);
 
   return (
-    <main className="assessment-shell min-h-dvh bg-canvas text-ink">
+    <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
       <SecureHeader label="System check" />
       <div className="assessment-content shell-pad mx-auto flex min-h-[calc(100dvh-var(--shell-total-header))] w-full max-w-[1520px] flex-col justify-center md:min-h-0">
         <div className="flex min-h-0 w-full flex-col md:h-full md:max-h-[600px]">
@@ -184,11 +186,7 @@ export function SetupStage({
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-[11px]">
                 Required before starting
               </p>
-              <h1
-                tabIndex={-1}
-                data-stage-heading
-                className="stage-focus mt-0.5 font-serif text-2xl font-medium tracking-[-0.025em] text-ink sm:text-3xl"
-              >
+              <h1 className="mt-0.5 font-serif text-2xl font-medium tracking-[-0.025em] text-ink sm:text-3xl">
                 Check your setup
               </h1>
             </div>
@@ -230,7 +228,7 @@ export function SetupStage({
                   </div>
                   <h2 className="mt-3 text-base font-semibold text-white sm:mt-4 sm:text-lg">
                     {mediaStatus === "requesting"
-                      ? "Waiting for browser permission..."
+                      ? "Waiting for browser permission…"
                       : mediaStatus === "unavailable"
                         ? "Camera and microphone required"
                         : "Allow camera and microphone"}
@@ -291,6 +289,7 @@ export function SetupStage({
               <label className="flex cursor-pointer items-start gap-3 px-4 py-3.5 sm:px-5">
                 <input
                   type="checkbox"
+                  name="recording_consent"
                   checked={consent}
                   onChange={(event) => onConsentChange(event.target.checked)}
                   className="mt-0.5 size-4 shrink-0 accent-ink outline-none focus-visible:ring-2 focus-visible:ring-ink/25 focus-visible:ring-offset-2"
@@ -329,7 +328,7 @@ export function SetupStage({
                       <Camera />
                     )}
                     {mediaStatus === "requesting"
-                      ? "Checking..."
+                      ? "Checking…"
                       : "Check camera and microphone"}
                   </Button>
                 )}
@@ -379,6 +378,8 @@ function DeviceSelect({
       </span>
       <div className="relative">
         <select
+          name={label === "Camera" ? "camera" : "microphone"}
+          autoComplete="off"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className="h-11 min-w-0 w-full appearance-none rounded-lg border border-line bg-surface px-3 pr-9 text-base text-ink-soft outline-none transition-colors focus-visible:border-ink focus-visible:ring-2 focus-visible:ring-ink/15 focus-visible:ring-offset-1 md:text-sm"
@@ -401,7 +402,7 @@ function DeviceSelect({
 
 export function CountdownStage({ count }: { count: number }) {
   return (
-    <main className="relative grid h-dvh place-items-center overflow-hidden bg-canvas px-5 text-center text-ink">
+    <main id="assessment-main" className="relative grid h-dvh place-items-center overflow-hidden bg-canvas px-5 text-center text-ink">
       <div className="countdown-ring absolute size-[min(400px,78vw)] rounded-full border border-line" />
       <div className="absolute size-[min(300px,58vw)] rounded-full border border-line/70" />
       <div className="relative z-10">
@@ -411,15 +412,11 @@ export function CountdownStage({ count }: { count: number }) {
         <div className="mx-auto grid size-20 place-items-center rounded-xl border border-ink bg-surface font-mono text-3xl font-medium text-ink" aria-hidden="true">
           {count}
         </div>
-        <h1
-          tabIndex={-1}
-          data-stage-heading
-          className="stage-focus mt-7 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl"
-        >
+        <h1 className="mt-7 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
           Assessment starting
         </h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">
-          Camera and microphone are locked on. Maya will ask the first question.
+          Camera and microphone are locked on. Sia will ask the first question.
         </p>
         <div className="mx-auto mt-6 flex w-fit items-center overflow-hidden rounded-lg border border-line bg-surface text-xs font-semibold text-ink-soft">
           <span className="flex items-center gap-1.5 px-4 py-2">

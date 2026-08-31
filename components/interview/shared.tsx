@@ -10,14 +10,29 @@ import {
   LockKeyhole,
   Mic,
   ShieldCheck,
+  Moon,
+  Sun,
 } from "lucide-react";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 import { type AnswerMode, formatTime } from "./config";
+
+export function AssessmentContent({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("assessment-content shell-pad mx-auto flex w-full max-w-[1520px] items-center", className)}>
+      {children}
+    </div>
+  );
+}
 
 export function AssessmentFrame({
   children,
@@ -27,7 +42,7 @@ export function AssessmentFrame({
   className?: string;
 }) {
   return (
-    <div className="assessment-content shell-pad mx-auto flex w-full max-w-[1520px] items-center">
+    <AssessmentContent>
       <div
         className={cn(
           "grid w-full min-w-0 gap-[var(--assessment-gap)] md:h-full md:min-h-0 md:max-h-[var(--assessment-frame-max)]",
@@ -36,7 +51,7 @@ export function AssessmentFrame({
       >
         {children}
       </div>
-    </div>
+    </AssessmentContent>
   );
 }
 
@@ -142,14 +157,14 @@ export const CandidatePreview = memo(function CandidatePreview({
   );
 });
 
-function SoundBars() {
+function SoundBars({ count = 7, className }: { count?: number; className?: string }) {
   return (
-    <div className="flex h-6 items-center justify-center gap-0.5" aria-hidden="true">
-      {[0, 1, 2, 3, 4, 5, 6].map((bar) => (
+    <div className={cn("flex h-6 items-center justify-center gap-0.5", className)} aria-hidden="true">
+      {Array.from({ length: count }, (_, bar) => (
         <span
           key={bar}
-          className="sound-bar w-0.5 rounded-full bg-current"
-          style={{ "--bar-delay": `${bar * 85}ms` } as React.CSSProperties}
+          className={cn("sound-bar rounded-full bg-current", count > 7 ? "min-w-0 max-w-1 flex-1" : "w-0.5")}
+          style={{ "--bar-delay": `${(bar % 7) * 85}ms` } as React.CSSProperties}
         />
       ))}
     </div>
@@ -159,36 +174,40 @@ function SoundBars() {
 export function AIOrb({
   state,
   size = "large",
+  showLabel = true,
 }: {
   state: "speaking" | "listening" | "thinking";
   size?: "small" | "large";
+  showLabel?: boolean;
 }) {
   const labels = {
-    speaking: "Maya is asking",
-    listening: "Maya is listening",
-    thinking: "Maya is ready",
+    speaking: "Sia is asking",
+    listening: "Sia is listening",
+    thinking: "Sia is ready",
   };
 
   return (
     <div className="flex flex-col items-center">
       <div
         className={cn(
-          "short-mobile-orb grid shrink-0 place-items-center rounded-full bg-ink text-white",
+          "short-mobile-orb grid shrink-0 place-items-center rounded-full bg-ink text-on-brand",
           size === "large" ? "size-20 sm:size-24 xl:size-28" : "size-16",
         )}
         aria-hidden="true"
       >
-        {state === "thinking" ? <Check className="size-6" /> : <SoundBars />}
+        {state === "speaking" ? <SoundBars /> : state === "listening" ? <Mic className="size-5" /> : <Check className="size-6" />}
       </div>
-      <div className="mt-3 flex items-center gap-2 text-xs font-medium text-muted">
-        <span
-          className={cn(
-            "size-1.5 rounded-full",
-            state === "listening" ? "bg-danger" : state === "thinking" ? "bg-success" : "bg-ink",
-          )}
-        />
-        {labels[state]}
-      </div>
+      {showLabel ? (
+        <div className="mt-3 flex items-center gap-2 text-xs font-medium text-muted">
+          <span
+            className={cn(
+              "size-1.5 rounded-full",
+              state === "listening" ? "bg-danger" : state === "thinking" ? "bg-success" : "bg-ink",
+            )}
+          />
+          {labels[state]}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -207,12 +226,15 @@ export function SecureHeader({
     >
       <div className="mx-auto flex h-full w-full max-w-[1520px] items-center justify-between px-[var(--assessment-outer)]">
         <PossoLogo responsiveCompact />
-        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted">
-          <LockKeyhole className="size-3.5 text-brand" />
-          <span className={cn("max-w-[52vw] truncate", compactLabel && "hidden sm:inline")}>
-            {label}
-          </span>
-          {compactLabel && <span className="sm:hidden">{compactLabel}</span>}
+        <div className="flex min-w-0 items-center gap-1 text-xs font-semibold text-muted sm:gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <LockKeyhole className="size-3.5 shrink-0 text-brand" />
+            <span className={cn("max-w-[40vw] truncate sm:max-w-[52vw]", compactLabel && "hidden sm:inline")}>
+              {label}
+            </span>
+            {compactLabel && <span className="sm:hidden">{compactLabel}</span>}
+          </div>
+          <ThemeToggle />
         </div>
       </div>
     </header>
@@ -222,11 +244,9 @@ export function SecureHeader({
 export function RoomHeader({
   label,
   detail,
-  progress,
 }: {
   label: string;
   detail: string;
-  progress: number;
 }) {
   return (
     <header
@@ -236,10 +256,7 @@ export function RoomHeader({
       <div className="mx-auto flex h-full w-full max-w-[1520px] items-center gap-4 px-[var(--assessment-outer)]">
         <PossoLogo responsiveCompact />
         <div className="hidden h-7 w-px bg-line md:block" />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold text-ink-soft">{label}</div>
-          <Progress value={progress} className="mt-1.5 max-w-sm" aria-label="Assessment progress" />
-        </div>
+        <div className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-soft">{label}</div>
         <div className="hidden items-center gap-4 text-xs font-semibold text-ink-soft lg:flex">
           <span className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-soft px-2.5 py-1.5 font-medium text-muted">
             <Clock3 className="size-3.5" /> {detail}
@@ -254,11 +271,61 @@ export function RoomHeader({
             <Mic className="size-3.5 text-brand" /> Mic
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft lg:hidden">
-          <span className="size-1.5 rounded-full bg-danger" /> Live
+        <div className="flex items-center gap-3 text-xs font-semibold text-ink-soft lg:hidden">
+          <span className="hidden items-center gap-1.5 text-muted sm:flex">
+            <Clock3 className="size-3.5" /> {detail}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-danger" /> Live
+          </span>
+          <span className="hidden items-center gap-2 md:flex" aria-label="Camera and microphone on">
+            <Camera className="size-3.5" />
+            <Mic className="size-3.5" />
+          </span>
         </div>
+        <ThemeToggle />
       </div>
     </header>
+  );
+}
+
+function ThemeToggle() {
+  useLayoutEffect(() => {
+    let savedTheme: string | null = null;
+    try {
+      savedTheme = localStorage.getItem("posso-theme");
+    } catch {}
+    if (savedTheme) return;
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const applySystemTheme = (event: MediaQueryListEvent | MediaQueryList) => {
+      document.documentElement.setAttribute("data-theme", event.matches ? "dark" : "light");
+    };
+    applySystemTheme(media);
+    media.addEventListener("change", applySystemTheme);
+    return () => media.removeEventListener("change", applySystemTheme);
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = nextTheme;
+    try {
+      localStorage.setItem("posso-theme", nextTheme);
+    } catch {}
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-10 shrink-0"
+      onClick={toggleTheme}
+      aria-label="Toggle color theme"
+      title="Toggle color theme"
+    >
+      <Sun className="theme-icon-light" aria-hidden="true" />
+      <Moon className="theme-icon-dark" aria-hidden="true" />
+    </Button>
   );
 }
 
@@ -303,13 +370,15 @@ export function AnswerStatus({
 }) {
   if (mode === "asking") {
     return (
-      <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-soft px-4 py-3 text-left">
-        <span className="grid size-9 place-items-center rounded-md bg-brand text-white">
+      <div className="grid min-h-[100px] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 bg-surface-soft px-[var(--assessment-panel-pad)] py-3.5 text-left sm:min-h-[68px]">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Up next</p>
+          <p className="mt-1 truncate text-sm font-semibold text-ink-soft">Answer recording starts automatically</p>
+        </div>
+        <div className="flex items-center gap-2 border-l border-line pl-4 text-xs font-semibold text-ink-soft">
           <AudioLines className="size-4" />
-        </span>
-        <div>
-          <p className="text-sm font-semibold text-ink-soft">Listen to the full question</p>
-          <p className="mt-0.5 text-xs text-muted">Your answer begins automatically when Maya finishes.</p>
+          <span className="hidden sm:inline">Listen to Sia</span>
+          <span className="sm:hidden">Listen</span>
         </div>
       </div>
     );
@@ -317,27 +386,34 @@ export function AnswerStatus({
 
   if (mode === "saved") {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-lg bg-success-soft px-4 py-3 text-sm font-semibold text-success">
+      <div className="flex min-h-[100px] w-full items-center justify-center gap-2 bg-success-soft px-[var(--assessment-panel-pad)] py-4 text-sm font-semibold text-success sm:min-h-[68px]">
         <CheckCircle2 className="size-4" /> Response captured
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-line bg-surface-soft px-3 py-3 text-left sm:gap-4 sm:px-4 lg:flex lg:justify-between">
-      <div className="flex items-center gap-3">
-        <span className="relative grid size-9 place-items-center rounded-md bg-brand text-white">
-          <Mic className="size-4" />
-          <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border-2 border-surface-soft bg-danger" />
-        </span>
-        <div>
-          <p className="text-sm font-semibold text-ink-soft">Answer recording</p>
-          <p className="mt-0.5 font-mono text-xs text-muted">{formatTime(elapsed)}</p>
+    <div className="min-h-[100px] w-full bg-surface-soft px-[var(--assessment-panel-pad)] py-3 text-left sm:min-h-[68px]">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:grid-cols-[auto_minmax(8rem,1fr)_auto] lg:gap-x-6">
+        <div className="flex min-w-0 items-center gap-2.5 sm:min-w-40">
+          <span className="relative flex size-3 shrink-0" aria-hidden="true">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-danger/35" />
+            <span className="relative m-auto size-2 rounded-full bg-danger" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-ink-soft">Recording</p>
+            <p className="mt-0.5 font-mono text-xs text-muted">{formatTime(elapsed)} elapsed</p>
+          </div>
         </div>
+        <div className="flex h-9 min-w-0 items-center justify-center border-l border-line pl-4 text-ink-soft sm:border-x sm:px-5">
+          <SoundBars count={17} className="h-7 w-full max-w-52 gap-1" />
+        </div>
+        <Button size="sm" className="order-3 col-span-2 h-11 w-full shrink-0 px-3 sm:order-none sm:col-span-1 sm:w-auto sm:px-4" onClick={onDone}>
+          <Check />
+          <span className="hidden sm:inline">{doneLabel}</span>
+          <span className="sm:hidden">{doneLabel === "Finish interview" ? "Finish" : "Done"}</span>
+        </Button>
       </div>
-      <Button size="sm" className="h-11 w-auto shrink-0 px-3 sm:px-4" onClick={onDone}>
-        <Check /> {doneLabel}
-      </Button>
     </div>
   );
 }
@@ -347,7 +423,7 @@ export function IntegrityDialog({
   onReconnect,
   title = "Required device disconnected",
   actionLabel = "Reconnect devices",
-  busyLabel = "Reconnecting...",
+  busyLabel = "Reconnecting…",
   guidance = "Reconnect the device to keep this attempt valid. Camera and microphone cannot be disabled during the assessment.",
   busy = false,
   error = "",

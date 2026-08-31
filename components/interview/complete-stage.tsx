@@ -1,32 +1,32 @@
 import { CameraOff, Check, MicOff } from "lucide-react";
 
 import { assessment } from "./config";
-import { SecureHeader } from "./shared";
+import { AssessmentContent, SecureHeader } from "./shared";
 
 const handoffDetails = [
   ["Attempt", assessment.id],
-  ["Candidate", assessment.candidate],
-  ["Expected items", "3 spoken steps / 1 code draft"],
+  ["Status", "Interview complete"],
+  ["Responses", "Captured for review"],
   ["Delivery", "Awaiting backend connection"],
 ];
 
 export default function CompleteStage() {
   return (
-    <main className="assessment-shell min-h-dvh bg-canvas text-ink">
+    <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
       <SecureHeader
         label={`Session ended / ${assessment.id}`}
         compactLabel={assessment.id}
       />
 
-      <section
-        className="assessment-content shell-pad mx-auto flex w-full max-w-[1520px] flex-1 items-center"
-        aria-labelledby="completion-heading"
-      >
-        <div className="grid w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-          <article className="px-5 py-7 sm:px-8 sm:py-10 lg:px-12 lg:py-12 xl:px-16">
+      <AssessmentContent className="min-h-[calc(100dvh-var(--shell-total-header))] items-stretch md:min-h-0 md:items-center">
+        <section
+          className="grid min-h-full w-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:min-h-[32rem] lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:grid-rows-none"
+          aria-labelledby="completion-heading"
+        >
+          <article className="flex flex-col justify-center px-5 py-7 sm:px-8 sm:py-10 lg:px-12 lg:py-12 xl:px-16">
             <div className="flex items-center gap-3">
               <span
-                className="grid size-10 place-items-center rounded-lg border border-ink bg-ink text-white"
+                className="grid size-10 place-items-center rounded-lg border border-ink bg-ink text-on-brand"
                 aria-hidden="true"
               >
                 <Check className="size-4" strokeWidth={2.6} />
@@ -37,14 +37,12 @@ export default function CompleteStage() {
             </div>
             <h1
               id="completion-heading"
-              tabIndex={-1}
-              data-stage-heading
-              className="stage-focus mt-6 max-w-xl text-[clamp(2.25rem,8vw,4rem)] leading-[1.02] font-semibold tracking-[-0.05em] text-ink sm:mt-8"
+              className="mt-6 max-w-xl text-[clamp(2.25rem,8vw,4rem)] leading-[1.02] font-semibold tracking-[-0.05em] text-ink sm:mt-8"
             >
-              You&apos;re finished, Alex.
+              Interview complete.
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-muted sm:text-[15px] sm:leading-7">
-              Maya has ended the interview. Camera and microphone access has
+              Sia has ended the interview. Camera and microphone access has
               been released for this session.
             </p>
 
@@ -59,7 +57,7 @@ export default function CompleteStage() {
           </article>
 
           <aside
-            className="border-t border-line bg-canvas px-5 py-7 sm:px-8 sm:py-8 lg:border-t-0 lg:border-l lg:px-9 lg:py-10"
+            className="flex flex-col border-t border-line bg-canvas px-5 py-7 sm:px-8 sm:py-8 lg:border-t-0 lg:border-l lg:px-9 lg:py-10"
             aria-label="Session receipt"
           >
             <div className="flex items-start justify-between gap-6 border-b border-ink pb-5">
@@ -76,7 +74,7 @@ export default function CompleteStage() {
               </span>
             </div>
 
-            <dl className="divide-y divide-line">
+            <dl className="divide-y divide-line lg:my-auto">
               {handoffDetails.map(([label, value]) => (
                 <div
                   key={label}
@@ -97,22 +95,9 @@ export default function CompleteStage() {
               verify a server upload.
             </p>
           </aside>
-        </div>
-      </section>
+        </section>
+      </AssessmentContent>
 
-      <footer
-        className="shrink-0 bg-editor text-white"
-        aria-label="Session status"
-      >
-        <div className="safe-inline mx-auto flex min-h-14 w-full max-w-[1520px] flex-col justify-center gap-1 px-4 py-3 text-[11px] sm:flex-row sm:items-center sm:justify-between sm:px-7 lg:px-8 xl:px-10">
-          <span className="font-semibold text-white/90">
-            No further questions remain.
-          </span>
-          <span className="font-mono uppercase tracking-[0.08em] text-white/55">
-            Prototype receipt / delivery unverified
-          </span>
-        </div>
-      </footer>
     </main>
   );
 }

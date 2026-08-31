@@ -4,7 +4,7 @@ import { Camera, FileCode2, Mic } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 
-import { codeLanguages, type AnswerMode, type CodeLanguage } from "./config";
+import { codeLanguages, formatTime, type AnswerMode, type CodeLanguage } from "./config";
 import { AIOrb, AnswerStatus, AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
 
 export default function ExplanationStage({
@@ -12,6 +12,7 @@ export default function ExplanationStage({
   language,
   answerMode,
   answerElapsed,
+  sessionElapsed,
   stream,
   onFinish,
 }: {
@@ -19,70 +20,86 @@ export default function ExplanationStage({
   language: CodeLanguage;
   answerMode: AnswerMode;
   answerElapsed: number;
+  sessionElapsed: number;
   stream: MediaStream | null;
   onFinish: () => void;
 }) {
   const orbState = answerMode === "asking" ? "speaking" : answerMode === "answering" ? "listening" : "thinking";
   const languageConfig = codeLanguages[language];
+  const responseState = answerMode === "asking"
+    ? {
+        label: "Sia is speaking",
+        detail: "Your microphone begins recording automatically when the prompt ends.",
+      }
+    : answerMode === "answering"
+      ? {
+          label: "Your walkthrough is live",
+          detail: "Explain your solution naturally, then select Finish when you are done.",
+        }
+      : {
+          label: "Walkthrough captured",
+          detail: "Your final response has been securely captured.",
+        };
 
   return (
-    <main className="assessment-shell min-h-dvh bg-canvas text-ink">
-      <RoomHeader label="Walkthrough / Question 4 of 4" detail="3 min left" progress={86} />
-      <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)] lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
-        <section className="hidden overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor md:order-1 md:flex md:h-full md:min-h-0 md:flex-col">
-          <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-[var(--assessment-panel-pad)] text-white/70">
-            <div className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-4" /> {languageConfig.fileName}</div>
-            <Badge className="bg-white/10 text-white/75">{languageConfig.label} · Read only</Badge>
-          </div>
-          <div className="grid flex-1 grid-cols-[46px_minmax(0,1fr)] overflow-hidden lg:min-h-0">
-            <div className="select-none border-r border-white/10 bg-editor-soft py-4 pr-3 text-right font-mono text-xs leading-6 text-white/50">{code.split("\n").map((_, index) => <div key={index}>{index + 1}</div>)}</div>
-            <pre className="overflow-auto p-4 font-mono text-sm leading-6 whitespace-pre text-white/85">{code}</pre>
-          </div>
-        </section>
-
-        <section className="order-1 flex h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:order-2 md:h-full">
-          <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-[var(--assessment-panel-pad)]">
-            <Badge tone="neutral">Walkthrough</Badge>
-            <span className="text-xs font-medium text-muted">Question 4 of 4</span>
-          </div>
-
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-start gap-3 overflow-hidden p-[var(--assessment-panel-pad)] text-center md:justify-center md:gap-4 md:overflow-y-auto">
-            <div className="grid w-full shrink-0 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 text-left md:flex md:max-w-xl md:flex-col md:text-center">
-              <AIOrb state={orbState} size="small" />
-              <div>
-                <h1 tabIndex={-1} data-stage-heading className="stage-focus short-screen-question font-serif text-xl leading-[1.15] font-medium tracking-[-0.03em] text-ink md:text-[clamp(1.65rem,2.3vw,2.25rem)] md:leading-tight">&ldquo;Walk me through your approach and one tradeoff you considered.&rdquo;</h1>
-                <p className="short-screen-hide mt-3 hidden text-sm leading-6 text-muted md:block">Your submitted code stays visible while your response is captured.</p>
-              </div>
-            </div>
-
-            <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-white/10 bg-editor text-left md:hidden" aria-label="Submitted solution, read only">
-              <div className="flex h-9 shrink-0 items-center justify-between border-b border-white/10 px-3 text-white/70">
-                <span className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-3.5" /> {languageConfig.fileName}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/50">{languageConfig.label} · Read only</span>
-              </div>
-              <div className="grid min-h-0 flex-1 grid-cols-[36px_minmax(0,1fr)] overflow-hidden">
-                <div className="select-none overflow-hidden border-r border-white/10 bg-editor-soft py-2.5 pr-2 text-right font-mono text-[10px] leading-5 text-white/40">{code.split("\n").map((_, index) => <div key={index}>{index + 1}</div>)}</div>
-                <pre className="overflow-auto p-2.5 font-mono text-xs leading-5 whitespace-pre text-white/85">{code}</pre>
-              </div>
-            </section>
-          </div>
-
-          <div className="shrink-0 border-t border-line p-3 lg:p-[var(--assessment-panel-pad)]">
-            <div className="mx-auto max-w-md"><AnswerStatus mode={answerMode} elapsed={answerElapsed} onDone={onFinish} doneLabel="Finish interview" /></div>
-          </div>
-
-          <div className="grid min-h-14 shrink-0 grid-cols-[minmax(0,1fr)_6.5rem] items-center gap-3 border-t border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-2">
-            <div className="text-left">
-              <p className="flex items-center gap-2 text-xs font-semibold text-ink-soft"><span className={`size-1.5 rounded-full ${answerMode === "answering" ? "bg-danger" : answerMode === "saved" ? "bg-success" : "bg-muted"}`} /> {answerMode === "answering" ? "Answer capture is active" : "Camera and microphone remain on"}</p>
-              <p className="short-screen-hide mt-1 hidden text-xs leading-5 text-muted md:block">Approach · complexity · edge cases · tradeoffs</p>
-              <div className="mt-1.5 flex gap-3 text-xs text-muted">
-                <span className="flex items-center gap-1.5" aria-label="Camera on"><Camera className="size-3.5" /><span className="hidden md:inline">Camera on</span></span>
-                <span className="flex items-center gap-1.5" aria-label="Microphone on"><Mic className="size-3.5" /><span className="hidden md:inline">Microphone on</span></span>
-              </div>
-            </div>
+    <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
+      <RoomHeader label="Code walkthrough" detail={`${formatTime(sessionElapsed)} elapsed`} />
+      <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_var(--assessment-rail)]">
+        <section className="flex h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full">
+          <div className="grid shrink-0 grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-2 text-xs text-muted md:hidden">
             <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />
+            <div className="min-w-0 text-left">
+              <span className="font-medium text-ink-soft">{responseState.label}</span>
+              <span className="mt-1.5 flex items-center gap-4"><span className="flex items-center gap-1.5"><Camera className="size-3.5" /> Camera on</span><span className="flex items-center gap-1.5"><Mic className="size-3.5" /> Mic on</span></span>
+            </div>
+          </div>
+
+          <div className="grid shrink-0 grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 border-b border-line px-[var(--assessment-panel-pad)] pb-[var(--assessment-panel-pad)] pt-3 text-left md:p-[var(--assessment-panel-pad)] lg:grid-cols-[5rem_minmax(0,1fr)] lg:gap-5">
+            <div><AIOrb state={orbState} size="small" /></div>
+            <div className="min-w-0">
+              <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+                <span className="hidden md:inline">Sia</span>
+                <span className="hidden size-1 rounded-full bg-line md:inline-block" />
+                <span>Code walkthrough</span>
+              </div>
+              <h1 className="short-screen-question font-serif text-xl leading-[1.15] font-medium tracking-[-0.03em] text-ink md:text-[clamp(1.5rem,2vw,2.05rem)] md:leading-tight">
+                &ldquo;Walk me through your approach and one tradeoff you considered.&rdquo;
+              </h1>
+            </div>
+          </div>
+
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden bg-code-surface text-left" aria-label="Submitted solution, read only">
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-code-line px-[var(--assessment-panel-pad)] text-muted">
+              <span className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-3.5" /> {languageConfig.fileName}</span>
+              <Badge tone="neutral">{languageConfig.label} / Submitted</Badge>
+            </div>
+            <div className="grid min-h-0 flex-1 grid-cols-[36px_minmax(0,1fr)] overflow-hidden sm:grid-cols-[46px_minmax(0,1fr)]">
+              <div className="select-none overflow-hidden border-r border-code-line bg-code-gutter py-3 pr-2 text-right font-mono text-[10px] leading-5 text-muted sm:py-4 sm:pr-3 sm:text-xs sm:leading-6">
+                {code.split("\n").map((_, index) => <div key={index}>{index + 1}</div>)}
+              </div>
+              <pre className="overflow-auto p-3 font-mono text-xs leading-5 whitespace-pre text-ink sm:p-4 sm:text-sm sm:leading-6">{code}</pre>
+            </div>
+          </section>
+
+          <div className="shrink-0 border-t border-line">
+            <AnswerStatus mode={answerMode} elapsed={answerElapsed} onDone={onFinish} doneLabel="Finish interview" />
           </div>
         </section>
+
+        <aside className="hidden gap-4 md:grid md:h-full md:min-h-0 md:grid-rows-[auto_minmax(0,1fr)]" aria-label="Live walkthrough status">
+          <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />
+          <section className="flex min-h-0 flex-col justify-between border-y border-line py-5">
+            <div className="px-1">
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Your response</p>
+              <h2 className="mt-2 text-base font-semibold tracking-[-0.02em] text-ink-soft">{responseState.label}</h2>
+              <p className="mt-2 text-xs leading-5 text-muted">{responseState.detail}</p>
+            </div>
+            <div className="mt-5 space-y-2 border-t border-line px-1 pt-4 text-[11px] font-medium text-muted">
+              <span className="flex items-center gap-2"><Camera className="size-3.5" /> Camera on</span>
+              <span className="flex items-center gap-2"><Mic className="size-3.5" /> Microphone on</span>
+            </div>
+          </section>
+        </aside>
       </AssessmentFrame>
     </main>
   );

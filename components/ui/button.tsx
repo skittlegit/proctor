@@ -9,7 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-brand text-white hover:bg-brand-hover",
+          "bg-brand text-on-brand hover:bg-brand-hover",
         secondary:
           "bg-brand-soft text-ink hover:bg-surface-strong",
         outline:
