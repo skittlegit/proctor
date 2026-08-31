@@ -13,7 +13,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
-import { memo, useEffect, useLayoutEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -190,7 +190,7 @@ export function AIOrb({
     <div className="flex flex-col items-center">
       <div
         className={cn(
-          "short-mobile-orb grid shrink-0 place-items-center rounded-full bg-ink text-on-brand",
+          "short-mobile-orb grid shrink-0 place-items-center rounded-full bg-orb text-on-orb ring-1 ring-line",
           size === "large" ? "size-20 sm:size-24 xl:size-28" : "size-16",
         )}
         aria-hidden="true"
@@ -290,28 +290,9 @@ export function RoomHeader({
 }
 
 function ThemeToggle() {
-  useLayoutEffect(() => {
-    let savedTheme: string | null = null;
-    try {
-      savedTheme = localStorage.getItem("posso-theme");
-    } catch {}
-    if (savedTheme) return;
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const applySystemTheme = (event: MediaQueryListEvent | MediaQueryList) => {
-      document.documentElement.setAttribute("data-theme", event.matches ? "dark" : "light");
-    };
-    applySystemTheme(media);
-    media.addEventListener("change", applySystemTheme);
-    return () => media.removeEventListener("change", applySystemTheme);
-  }, []);
-
   function toggleTheme() {
     const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = nextTheme;
-    try {
-      localStorage.setItem("posso-theme", nextTheme);
-    } catch {}
   }
 
   return (
