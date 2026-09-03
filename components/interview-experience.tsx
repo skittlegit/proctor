@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   addTransitionType,
   startTransition,
@@ -12,7 +13,6 @@ import {
   ViewTransition,
 } from "react";
 
-import CodingStage from "@/components/interview/coding-stage";
 import CompleteStage from "@/components/interview/complete-stage";
 import {
   assessment,
@@ -28,8 +28,35 @@ import {
 import ConversationStage from "@/components/interview/conversation-stage";
 import { CountdownStage, SetupStage, WelcomeStage } from "@/components/interview/entry-stages";
 import ExplanationStage from "@/components/interview/explanation-stage";
-import { IntegrityDialog } from "@/components/interview/shared";
+import { AssessmentFrame, IntegrityDialog, RoomHeader } from "@/components/interview/shared";
 import { useMediaSession } from "@/components/interview/use-media-session";
+
+const CodingStage = dynamic(() => import("@/components/interview/coding-stage"), {
+  ssr: false,
+  loading: CodingStageLoading,
+});
+
+function CodingStageLoading() {
+  return (
+    <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink" aria-busy="true">
+      <RoomHeader label="Coding exercise" detail="Loading editor" />
+      <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_var(--assessment-rail)]">
+        <section className="order-2 min-h-44 animate-pulse rounded-[var(--assessment-radius)] border border-line bg-surface md:order-1 md:h-full" aria-hidden="true">
+          <div className="h-12 border-b border-line" />
+          <div className="grid h-[calc(100%-3rem)] grid-cols-[3rem_minmax(0,1fr)] bg-code-surface">
+            <div className="border-r border-code-line bg-code-gutter" />
+            <div className="space-y-3 p-4">
+              <div className="h-3 w-2/3 rounded-full bg-surface-strong" />
+              <div className="h-3 w-4/5 rounded-full bg-surface-strong" />
+              <div className="h-3 w-1/2 rounded-full bg-surface-strong" />
+            </div>
+          </div>
+        </section>
+        <aside className="order-1 min-h-28 animate-pulse rounded-[var(--assessment-radius)] border border-line bg-surface md:order-2 md:h-full" aria-hidden="true" />
+      </AssessmentFrame>
+    </main>
+  );
+}
 
 type SessionState = {
   stage: Stage;
@@ -460,12 +487,14 @@ export default function InterviewExperience() {
         const language: CodeLanguage = assessment.codingLanguages.some((option) => option === savedLanguage)
           ? savedLanguage as CodeLanguage
           : assessment.codingLanguages[0];
-        const drafts: Record<CodeLanguage, string> = {
-          typescript: typeof saved.drafts?.typescript === "string" ? saved.drafts.typescript : codeLanguages.typescript.starterCode,
-          javascript: typeof saved.drafts?.javascript === "string" ? saved.drafts.javascript : codeLanguages.javascript.starterCode,
-          python: typeof saved.drafts?.python === "string" ? saved.drafts.python : codeLanguages.python.starterCode,
-          java: typeof saved.drafts?.java === "string" ? saved.drafts.java : codeLanguages.java.starterCode,
-        };
+        const drafts = Object.fromEntries(
+          assessment.codingLanguages.map((option) => [
+            option,
+            typeof saved.drafts?.[option] === "string"
+              ? saved.drafts[option]
+              : codeLanguages[option].starterCode,
+          ]),
+        ) as Record<CodeLanguage, string>;
         dispatch({ type: "code-workspace", language, drafts });
       } catch {
         dispatch({ type: "code", code: draft });

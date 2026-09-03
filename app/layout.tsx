@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Frontend Engineer Interview | Posso Build",
-  description: "A calm, guided AI interview experience by Posso Build.",
+  title: "PossoBuild",
+  applicationName: "PossoBuild",
+  description: "A calm, guided AI interview experience by PossoBuild.",
 };
 
 export const viewport: Viewport = {

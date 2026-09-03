@@ -10,14 +10,45 @@ export type Stage =
 export type AnswerMode = "asking" | "answering" | "saved";
 export type TestStatus = "idle" | "running" | "passed";
 export type MediaStatus = "idle" | "requesting" | "ready" | "unavailable";
-export type CodeLanguage = "typescript" | "javascript" | "python" | "java";
+export type CodeLanguage =
+  | "typescript"
+  | "javascript"
+  | "python"
+  | "java"
+  | "c"
+  | "cpp"
+  | "csharp"
+  | "go"
+  | "rust"
+  | "kotlin"
+  | "swift"
+  | "php"
+  | "ruby"
+  | "sql";
+
+export const codeLanguageOrder = [
+  "typescript",
+  "javascript",
+  "python",
+  "java",
+  "c",
+  "cpp",
+  "csharp",
+  "go",
+  "rust",
+  "kotlin",
+  "swift",
+  "php",
+  "ruby",
+  "sql",
+] as const satisfies readonly CodeLanguage[];
 
 export const assessment = {
   id: "PS-2048-FE",
   role: "Frontend Engineer",
   candidate: "Alex Chen",
   durationMinutes: 35,
-  codingLanguages: ["typescript", "javascript"] satisfies CodeLanguage[],
+  codingLanguages: codeLanguageOrder,
   codingChallenge: {
     title: "First unique character",
     description:
@@ -52,11 +83,13 @@ export const assessment = {
 export const codeLanguages: Record<CodeLanguage, {
   label: string;
   fileName: string;
+  syntaxName: string;
   starterCode: string;
 }> = {
   typescript: {
     label: "TypeScript",
     fileName: "solution.ts",
+    syntaxName: "TypeScript",
     starterCode: `function firstUniqueCharacter(value: string): number {
   // Return the index of the first character that appears once.
   // Return -1 when every character repeats.
@@ -67,6 +100,7 @@ export const codeLanguages: Record<CodeLanguage, {
   javascript: {
     label: "JavaScript",
     fileName: "solution.js",
+    syntaxName: "JavaScript",
     starterCode: `function firstUniqueCharacter(value) {
   // Return the index of the first character that appears once.
   // Return -1 when every character repeats.
@@ -77,6 +111,7 @@ export const codeLanguages: Record<CodeLanguage, {
   python: {
     label: "Python",
     fileName: "solution.py",
+    syntaxName: "Python",
     starterCode: `def first_unique_character(value: str) -> int:
     # Return the index of the first character that appears once.
     # Return -1 when every character repeats.
@@ -86,6 +121,7 @@ export const codeLanguages: Record<CodeLanguage, {
   java: {
     label: "Java",
     fileName: "Solution.java",
+    syntaxName: "Java",
     starterCode: `class Solution {
   public int firstUniqueCharacter(String value) {
     // Return the index of the first character that appears once.
@@ -95,16 +131,129 @@ export const codeLanguages: Record<CodeLanguage, {
   }
 }`,
   },
+  c: {
+    label: "C",
+    fileName: "solution.c",
+    syntaxName: "C",
+    starterCode: `int first_unique_character(const char *value) {
+  // Return the index of the first character that appears once.
+  // Return -1 when every character repeats.
+
+  return -1;
+}`,
+  },
+  cpp: {
+    label: "C++",
+    fileName: "solution.cpp",
+    syntaxName: "C++",
+    starterCode: `#include <string>
+
+int firstUniqueCharacter(const std::string& value) {
+  // Return the index of the first character that appears once.
+  // Return -1 when every character repeats.
+
+  return -1;
+}`,
+  },
+  csharp: {
+    label: "C#",
+    fileName: "Solution.cs",
+    syntaxName: "C#",
+    starterCode: `public class Solution {
+  public int FirstUniqueCharacter(string value) {
+    // Return the index of the first character that appears once.
+    // Return -1 when every character repeats.
+
+    return -1;
+  }
+}`,
+  },
+  go: {
+    label: "Go",
+    fileName: "solution.go",
+    syntaxName: "Go",
+    starterCode: `package solution
+
+func firstUniqueCharacter(value string) int {
+	// Return the index of the first character that appears once.
+	// Return -1 when every character repeats.
+
+	return -1
+}`,
+  },
+  rust: {
+    label: "Rust",
+    fileName: "solution.rs",
+    syntaxName: "Rust",
+    starterCode: `fn first_unique_character(value: &str) -> i32 {
+    // Return the index of the first character that appears once.
+    // Return -1 when every character repeats.
+
+    -1
+}`,
+  },
+  kotlin: {
+    label: "Kotlin",
+    fileName: "Solution.kt",
+    syntaxName: "Kotlin",
+    starterCode: `fun firstUniqueCharacter(value: String): Int {
+    // Return the index of the first character that appears once.
+    // Return -1 when every character repeats.
+
+    return -1
+}`,
+  },
+  swift: {
+    label: "Swift",
+    fileName: "Solution.swift",
+    syntaxName: "Swift",
+    starterCode: `func firstUniqueCharacter(_ value: String) -> Int {
+    // Return the index of the first character that appears once.
+    // Return -1 when every character repeats.
+
+    return -1
+}`,
+  },
+  php: {
+    label: "PHP",
+    fileName: "solution.php",
+    syntaxName: "PHP",
+    starterCode: `<?php
+
+function firstUniqueCharacter(string $value): int {
+    // Return the index of the first character that appears once.
+    // Return -1 when every character repeats.
+
+    return -1;
+}`,
+  },
+  ruby: {
+    label: "Ruby",
+    fileName: "solution.rb",
+    syntaxName: "Ruby",
+    starterCode: `def first_unique_character(value)
+  # Return the index of the first character that appears once.
+  # Return -1 when every character repeats.
+
+  -1
+end`,
+  },
+  sql: {
+    label: "SQL",
+    fileName: "solution.sql",
+    syntaxName: "SQL",
+    starterCode: `-- Return one row containing the first unique character index.
+-- Return -1 when every character repeats.
+
+SELECT -1 AS first_unique_index;`,
+  },
 };
 
 export const starterCode = codeLanguages.typescript.starterCode;
 
-export const starterCodeDrafts: Record<CodeLanguage, string> = {
-  typescript: codeLanguages.typescript.starterCode,
-  javascript: codeLanguages.javascript.starterCode,
-  python: codeLanguages.python.starterCode,
-  java: codeLanguages.java.starterCode,
-};
+export const starterCodeDrafts = Object.fromEntries(
+  codeLanguageOrder.map((language) => [language, codeLanguages[language].starterCode]),
+) as Record<CodeLanguage, string>;
 
 export const CODE_DRAFT_KEY = `posso:${assessment.id}:code:v1`;
 

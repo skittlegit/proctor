@@ -15,6 +15,9 @@
   --on-brand: #ffffff;
   --orb: #171a18;
   --on-orb: #ffffff;
+  --logo-outer: #111311;
+  --logo-overlap: #777c78;
+  --logo-core: #eceee9;
   --signal: #515a55;
   --success: #176b49;
   --success-soft: #e7f3ec;
@@ -27,6 +30,11 @@
   --code-surface: #f0f2f0;
   --code-gutter: #e4e7e4;
   --code-line: #d2d7d3;
+  --editor-selection: #cfd4ce;
+  --syntax-keyword: #8a3f37;
+  --syntax-string: #28704f;
+  --syntax-number: #9a5b1d;
+  --syntax-comment: #777d77;
   --shell-header: 60px;
   --assessment-outer: 1rem;
   --assessment-gap: 1rem;
@@ -53,6 +61,9 @@
   --on-brand: #111311;
   --orb: #30332d;
   --on-orb: #f7f6f1;
+  --logo-outer: #f1f0eb;
+  --logo-overlap: #858a84;
+  --logo-core: #252824;
   --signal: #b0b2ac;
   --success: #78cba1;
   --success-soft: #193729;
@@ -65,6 +76,11 @@
   --code-surface: #161814;
   --code-gutter: #121310;
   --code-line: #30332c;
+  --editor-selection: #3a4039;
+  --syntax-keyword: #ef938a;
+  --syntax-string: #88c9a7;
+  --syntax-number: #e4b36f;
+  --syntax-comment: #858b83;
   color-scheme: dark;
 }
 

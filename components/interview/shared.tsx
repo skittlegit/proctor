@@ -63,33 +63,45 @@ export function PossoSymbol({ className }: { className?: string }) {
       aria-hidden="true"
       focusable="false"
     >
-      <circle cx="24" cy="14.5" r="12" fill="currentColor" />
-      <circle cx="33.5" cy="24" r="12" fill="currentColor" />
-      <circle cx="24" cy="33.5" r="12" fill="currentColor" />
-      <circle cx="14.5" cy="24" r="12" fill="currentColor" />
-      <path
-        d="M13.4 14.5C16.7 12.9 20.2 12 24 12s7.3.9 10.6 2.5C36.2 17.8 37 20.2 37 24s-.8 6.2-2.4 9.5C31.3 35.1 27.8 36 24 36s-7.3-.9-10.6-2.5C11.8 30.2 11 27.8 11 24s.8-6.2 2.4-9.5Z"
-        fill="var(--surface)"
-      />
-      <path
-        d="M24 12.2c4.8 2.8 8.8 6.8 11.8 11.8-3 5-7 9-11.8 11.8-4.8-2.8-8.8-6.8-11.8-11.8 3-5 7-9 11.8-11.8Z"
-        fill="currentColor"
-      />
+      <defs>
+        <clipPath id="posso-top"><circle cx="24" cy="16" r="16" /></clipPath>
+        <clipPath id="posso-right"><circle cx="32" cy="24" r="16" /></clipPath>
+        <clipPath id="posso-bottom"><circle cx="24" cy="32" r="16" /></clipPath>
+      </defs>
+      <g fill="var(--logo-outer)">
+        <circle cx="24" cy="16" r="16" />
+        <circle cx="32" cy="24" r="16" />
+        <circle cx="24" cy="32" r="16" />
+        <circle cx="16" cy="24" r="16" />
+      </g>
+      <g fill="var(--logo-overlap)">
+        <circle cx="32" cy="24" r="16" clipPath="url(#posso-top)" />
+        <circle cx="24" cy="32" r="16" clipPath="url(#posso-top)" />
+        <circle cx="16" cy="24" r="16" clipPath="url(#posso-top)" />
+        <circle cx="24" cy="32" r="16" clipPath="url(#posso-right)" />
+        <circle cx="16" cy="24" r="16" clipPath="url(#posso-right)" />
+        <circle cx="16" cy="24" r="16" clipPath="url(#posso-bottom)" />
+      </g>
+      <g fill="var(--logo-core)" clipPath="url(#posso-top)">
+        <g clipPath="url(#posso-right)"><circle cx="24" cy="32" r="16" /></g>
+        <g clipPath="url(#posso-right)"><circle cx="16" cy="24" r="16" /></g>
+        <g clipPath="url(#posso-bottom)"><circle cx="16" cy="24" r="16" /></g>
+      </g>
+      <g fill="var(--logo-core)" clipPath="url(#posso-right)">
+        <g clipPath="url(#posso-bottom)"><circle cx="16" cy="24" r="16" /></g>
+      </g>
     </svg>
   );
 }
 
-export function PossoLogo({ compact = false, responsiveCompact = false }: { compact?: boolean; responsiveCompact?: boolean }) {
+export function PossoLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <span className="flex shrink-0 items-center gap-2.5" role="img" aria-label="Posso Build">
+    <span className="flex shrink-0 items-center gap-2" role="img" aria-label="PossoBuild">
       <PossoSymbol />
       {!compact && (
         <span
           aria-hidden="true"
-          className={cn(
-            "whitespace-nowrap text-[23px] leading-none font-extrabold tracking-[-0.055em] text-ink sm:text-[25px]",
-            responsiveCompact && "max-[419px]:hidden",
-          )}
+          className="whitespace-nowrap text-[19px] leading-none font-extrabold tracking-[-0.055em] text-ink sm:text-[25px]"
         >
           PossoBuild
         </span>
@@ -225,7 +237,7 @@ export function SecureHeader({
       style={{ viewTransitionName: "assessment-header" }}
     >
       <div className="mx-auto flex h-full w-full max-w-[1520px] items-center justify-between px-[var(--assessment-outer)]">
-        <PossoLogo responsiveCompact />
+        <PossoLogo />
         <div className="flex min-w-0 items-center gap-1 text-xs font-semibold text-muted sm:gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <LockKeyhole className="size-3.5 shrink-0 text-brand" />
@@ -254,7 +266,7 @@ export function RoomHeader({
       style={{ viewTransitionName: "assessment-header" }}
     >
       <div className="mx-auto flex h-full w-full max-w-[1520px] items-center gap-4 px-[var(--assessment-outer)]">
-        <PossoLogo responsiveCompact />
+        <PossoLogo />
         <div className="hidden h-7 w-px bg-line md:block" />
         <div className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-soft">{label}</div>
         <div className="hidden items-center gap-4 text-xs font-semibold text-ink-soft lg:flex">

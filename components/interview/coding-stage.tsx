@@ -10,60 +10,13 @@ import {
   RotateCcw,
   Save,
 } from "lucide-react";
-import { memo, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+import CodeEditor from "./code-editor";
 import { assessment, codeLanguages, formatTime, type CodeLanguage, type TestStatus } from "./config";
 import { AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
-
-const CodeEditor = memo(function CodeEditor({ code, languageLabel, onChange }: { code: string; languageLabel: string; onChange: (value: string) => void }) {
-  const lineNumbers = useMemo(() => Array.from({ length: code.split("\n").length }, (_, index) => index + 1), [code]);
-  const insertsTabs = useRef(true);
-  const [keyboardMessage, setKeyboardMessage] = useState("");
-
-  return (
-    <div className="relative grid min-h-[46svh] flex-1 grid-cols-[36px_minmax(0,1fr)] overflow-hidden bg-code-surface text-ink sm:min-h-[380px] sm:grid-cols-[46px_minmax(0,1fr)] md:min-h-0">
-      <div aria-hidden="true" className="select-none border-r border-code-line bg-code-gutter py-3 pr-2 text-right font-mono text-xs leading-6 text-muted sm:py-4 sm:pr-3">{lineNumbers.map((line) => <div key={line}>{line}</div>)}</div>
-      <textarea
-        aria-label={`${languageLabel} code editor`}
-        aria-describedby="editor-keyboard-help editor-keyboard-status"
-        name="code_solution"
-        value={code}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={() => {
-          insertsTabs.current = true;
-          setKeyboardMessage("");
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            insertsTabs.current = false;
-            setKeyboardMessage("Tab now moves focus out of the editor.");
-            return;
-          }
-          if (event.key !== "Tab" || !insertsTabs.current || event.shiftKey) return;
-          event.preventDefault();
-          const element = event.currentTarget;
-          const start = element.selectionStart;
-          const end = element.selectionEnd;
-          onChange(`${code.slice(0, start)}  ${code.slice(end)}`);
-          requestAnimationFrame(() => {
-            element.selectionStart = start + 2;
-            element.selectionEnd = start + 2;
-          });
-        }}
-        wrap="off"
-        spellCheck={false}
-        autoCapitalize="none"
-        autoCorrect="off"
-        autoComplete="off"
-        className="min-h-[46svh] resize-none scroll-pb-24 overflow-auto bg-transparent p-3 font-mono text-base leading-6 whitespace-pre text-ink outline-none selection:bg-brand-soft focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink/30 sm:min-h-[380px] sm:p-4 md:min-h-0 lg:text-sm"
-      />
-      <span id="editor-keyboard-status" className="sr-only" aria-live="polite">{keyboardMessage}</span>
-    </div>
-  );
-});
 
 export default function CodingStage({
   code,
@@ -161,7 +114,7 @@ export default function CodingStage({
             </div>
           </div>
 
-          <CodeEditor key={language} code={code} languageLabel={languageConfig.label} onChange={onCodeChange} />
+          <CodeEditor key={language} code={code} language={language} onChange={onCodeChange} />
 
           <div className="shrink-0 border-t border-code-line bg-code-gutter text-ink-soft" role="status" aria-live="polite" aria-atomic="true">
             <div className="flex h-9 items-center justify-between border-b border-code-line px-[var(--assessment-panel-pad)]">
