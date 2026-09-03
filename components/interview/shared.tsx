@@ -482,7 +482,7 @@ export function IntegrityDialog({
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-50 grid place-items-center bg-editor/75 p-5 backdrop-blur-md"
+      className="fixed inset-0 z-50 grid place-items-center bg-editor/75 p-3 backdrop-blur-md sm:p-5"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="integrity-title"
@@ -490,24 +490,44 @@ export function IntegrityDialog({
       aria-busy={busy}
       tabIndex={-1}
     >
-      <div className="w-full max-w-md rounded-[var(--assessment-radius)] border border-line bg-surface p-7 text-center shadow-float">
-        <div className="mx-auto grid size-12 place-items-center rounded-lg bg-danger-soft text-danger">
-          <ShieldCheck className="size-5" />
-        </div>
-        <h2 id="integrity-title" className="mt-4 text-lg font-semibold text-ink">{title}</h2>
-        <p id="integrity-description" className="mt-2 text-sm leading-6 text-muted">{issue}</p>
-        <p id="integrity-guidance" className="mt-4 border-y border-line bg-surface-soft p-3 text-xs leading-5 text-muted">
-          {guidance}
-        </p>
-        {error && (
-          <p id="integrity-reconnect-error" className="mt-3 text-sm leading-5 text-danger" role="alert">
-            {error}
+      <div className="max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-[var(--assessment-radius)] border border-line bg-surface shadow-float sm:max-h-[calc(100dvh-2.5rem)]">
+        <header className="flex items-start gap-3 border-b border-line px-5 py-5 sm:gap-4 sm:px-6">
+          <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-danger-soft text-danger">
+            <ShieldCheck className="size-4.5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.13em] text-danger">
+              Recording paused
+            </p>
+            <h2 id="integrity-title" className="mt-1 text-lg font-semibold tracking-[-0.02em] text-ink">
+              {title}
+            </h2>
+          </div>
+        </header>
+
+        <div className="px-5 py-5 sm:px-6">
+          <p id="integrity-description" className="text-sm leading-6 text-muted">
+            {issue}
           </p>
-        )}
-        <Button ref={buttonRef} className="mt-5 w-full" onClick={onReconnect} disabled={busy}>
-          {busy && <LoaderCircle className="animate-spin" aria-hidden="true" />}
-          {busy ? busyLabel : actionLabel}
-        </Button>
+          <div id="integrity-guidance" className="mt-4 rounded-lg border border-line bg-surface-soft p-4">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+              Next step
+            </p>
+            <p className="mt-1.5 text-xs leading-5 text-muted">{guidance}</p>
+          </div>
+          {error ? (
+            <p id="integrity-reconnect-error" className="mt-4 border-l-2 border-danger pl-3 text-xs leading-5 text-danger" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        <footer className="border-t border-line bg-surface-soft px-5 py-4 sm:flex sm:items-center sm:justify-end sm:px-6">
+          <Button ref={buttonRef} className="w-full sm:w-auto sm:min-w-48" onClick={onReconnect} disabled={busy}>
+            {busy ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : null}
+            {busy ? busyLabel : actionLabel}
+          </Button>
+        </footer>
       </div>
     </div>
   );

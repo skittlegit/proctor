@@ -1,11 +1,21 @@
 "use client";
 
 import { Camera, FileCode2, Mic } from "lucide-react";
+import dynamic from "next/dynamic";
 
 import { Badge } from "@/components/ui/badge";
 
 import { codeLanguages, formatTime, type AnswerMode, type CodeLanguage } from "./config";
 import { AIOrb, AnswerStatus, AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
+
+const ReadOnlyCodeEditor = dynamic(() => import("./code-editor"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid min-h-0 flex-1 place-items-center bg-code-surface font-mono text-xs text-muted" role="status">
+      Loading submitted code…
+    </div>
+  ),
+});
 
 export default function ExplanationStage({
   code,
@@ -73,12 +83,7 @@ export default function ExplanationStage({
               <span className="flex items-center gap-2 text-xs font-semibold"><FileCode2 className="size-3.5" /> {languageConfig.fileName}</span>
               <Badge tone="neutral">{languageConfig.label} / Submitted</Badge>
             </div>
-            <div className="grid min-h-0 flex-1 grid-cols-[36px_minmax(0,1fr)] overflow-hidden sm:grid-cols-[46px_minmax(0,1fr)]">
-              <div className="select-none overflow-hidden border-r border-code-line bg-code-gutter py-3 pr-2 text-right font-mono text-[10px] leading-5 text-muted sm:py-4 sm:pr-3 sm:text-xs sm:leading-6">
-                {code.split("\n").map((_, index) => <div key={index}>{index + 1}</div>)}
-              </div>
-              <pre className="overflow-auto p-3 font-mono text-xs leading-5 whitespace-pre text-ink sm:p-4 sm:text-sm sm:leading-6">{code}</pre>
-            </div>
+            <ReadOnlyCodeEditor code={code} language={language} readOnly />
           </section>
 
           <div className="shrink-0 border-t border-line">

@@ -1,7 +1,6 @@
 "use client";
 
-import { HighlightStyle, syntaxHighlighting, syntaxTree, type LanguageSupport } from "@codemirror/language";
-import { lintGutter, linter, type Diagnostic } from "@codemirror/lint";
+import { HighlightStyle, syntaxHighlighting, type LanguageSupport } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { languages } from "@codemirror/language-data";
 import { tags } from "@lezer/highlight";
@@ -68,63 +67,32 @@ const editorTheme = EditorView.theme({
     backgroundColor: "var(--surface-soft)",
     color: "var(--foreground)",
   },
-  ".cm-lintRange-error": {
-    backgroundImage: "none",
-    borderBottom: "2px dotted var(--danger)",
-  },
-  ".cm-diagnostic-error": { borderLeftColor: "var(--danger)" },
 });
 
 const editorHighlightStyle = HighlightStyle.define([
-  { tag: [tags.keyword, tags.controlKeyword, tags.modifier], color: "var(--syntax-keyword)", fontWeight: "600" },
-  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "var(--foreground)", fontWeight: "600" },
-  { tag: [tags.propertyName, tags.attributeName], color: "var(--ink-soft)" },
-  { tag: [tags.typeName, tags.className, tags.namespace], color: "var(--foreground)", fontWeight: "600" },
-  { tag: [tags.string, tags.special(tags.string)], color: "var(--syntax-string)" },
-  { tag: [tags.bool, tags.null, tags.meta], color: "var(--syntax-keyword)" },
-  { tag: tags.number, color: "var(--syntax-number)" },
+  { tag: [tags.keyword, tags.controlKeyword, tags.modifier, tags.meta], color: "var(--syntax-keyword)", fontWeight: "600" },
   { tag: tags.comment, color: "var(--syntax-comment)", fontStyle: "italic" },
-  { tag: [tags.operator, tags.punctuation], color: "var(--ink-soft)" },
-  { tag: [tags.regexp, tags.escape], color: "var(--syntax-string)" },
-  { tag: [tags.invalid], color: "var(--danger)", textDecoration: "underline" },
 ]);
 
-const syntaxErrorLinter = linter(
-  (view) => {
-    const diagnostics: Diagnostic[] = [];
-
-    syntaxTree(view.state).iterate({
-      enter(node) {
-        if (!node.type.isError) return;
-        diagnostics.push({
-          from: node.from,
-          to: Math.max(node.from + 1, node.to),
-          severity: "error",
-          message: "Check the syntax near this token.",
-        });
-      },
-    });
-
-    return diagnostics;
-  },
-  { delay: 450 },
-);
+const readOnlyTheme = EditorView.theme({
+  ".cm-content": { paddingBottom: "0.75rem" },
+});
 
 const sharedExtensions = [
   editorTheme,
   syntaxHighlighting(editorHighlightStyle),
-  lintGutter(),
-  syntaxErrorLinter,
 ];
 
 export default function CodeEditor({
   code,
   language,
   onChange,
+  readOnly = false,
 }: {
   code: string;
   language: CodeLanguage;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
+  readOnly?: boolean;
 }) {
   const languageConfig = codeLanguages[language];
   const [languageSupport, setLanguageSupport] = useState<LanguageSupport | null>(null);
@@ -145,23 +113,28 @@ export default function CodeEditor({
   const extensions = useMemo(
     () => [
       ...sharedExtensions,
-      EditorView.contentAttributes.of({
-        "aria-label": `${languageConfig.label} code editor`,
-        "aria-describedby": "editor-keyboard-help",
-      }),
+      EditorView.contentAttributes.of(readOnly
+        ? { "aria-label": `Submitted ${languageConfig.label} solution, read only` }
+        : {
+            "aria-label": `${languageConfig.label} code editor`,
+            "aria-describedby": "editor-keyboard-help",
+          }),
+      ...(readOnly ? [readOnlyTheme] : []),
       ...(languageSupport ? [languageSupport] : []),
     ],
-    [languageConfig.label, languageSupport],
+    [languageConfig.label, languageSupport, readOnly],
   );
 
   return (
     <CodeMirror
       value={code}
       onChange={onChange}
+      readOnly={readOnly}
+      editable={!readOnly}
       extensions={extensions}
       theme="none"
       height="100%"
-      indentWithTab
+      indentWithTab={!readOnly}
       basicSetup={{
         autocompletion: false,
         bracketMatching: true,
@@ -172,8 +145,11 @@ export default function CodeEditor({
         highlightSelectionMatches: true,
         indentOnInput: true,
         lineNumbers: true,
+        syntaxHighlighting: false,
       }}
-      className="min-h-[46svh] flex-1 overflow-hidden bg-code-surface sm:min-h-[380px] md:min-h-0"
+      className={readOnly
+        ? "min-h-0 flex-1 overflow-hidden bg-code-surface"
+        : "min-h-[46svh] flex-1 overflow-hidden bg-code-surface sm:min-h-[380px] md:min-h-0"}
     />
   );
 }

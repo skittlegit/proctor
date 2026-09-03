@@ -31,9 +31,7 @@
   --code-gutter: #e4e7e4;
   --code-line: #d2d7d3;
   --editor-selection: #cfd4ce;
-  --syntax-keyword: #8a3f37;
-  --syntax-string: #28704f;
-  --syntax-number: #9a5b1d;
+  --syntax-keyword: #476253;
   --syntax-comment: #777d77;
   --shell-header: 60px;
   --assessment-outer: 1rem;
@@ -77,9 +75,7 @@
   --code-gutter: #121310;
   --code-line: #30332c;
   --editor-selection: #3a4039;
-  --syntax-keyword: #ef938a;
-  --syntax-string: #88c9a7;
-  --syntax-number: #e4b36f;
+  --syntax-keyword: #9fc0ac;
   --syntax-comment: #858b83;
   color-scheme: dark;
 }
