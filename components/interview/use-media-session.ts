@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { type MediaStatus } from "./config";
+import { waitForCaptureReady } from "./capture-readiness";
 
 type MediaState = {
   status: MediaStatus;
@@ -93,12 +94,14 @@ function describeMediaError(error: unknown) {
   return "We couldn't connect both required devices. Check your camera and microphone, then try again.";
 }
 
-export function useMediaSession(assessmentActive: boolean) {
+export function useMediaSession(assessmentActive: boolean, recordingActive = false) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const streamRef = useRef<MediaStream | null>(null);
   const selectionRef = useRef({ camera: "", mic: "" });
   const requestIdRef = useRef(0);
   const intentionallyStoppedTracksRef = useRef(new WeakSet<MediaStreamTrack>());
+  const disposalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoreAudioSessionRef = useRef<(() => void) | null>(null);
 
   const stopSessionTracks = useCallback((stream: MediaStream | null) => {
     stream?.getTracks().forEach((track) => {
@@ -111,10 +114,12 @@ export function useMediaSession(assessmentActive: boolean) {
     requestIdRef.current += 1;
     stopSessionTracks(streamRef.current);
     streamRef.current = null;
+    restoreAudioSessionRef.current?.();
+    restoreAudioSessionRef.current = null;
     dispatch({ type: "stopped" });
   }, [stopSessionTracks]);
 
-  const request = useCallback(async (cameraId?: string, micId?: string): Promise<MediaRequestResult> => {
+  const request = useCallback(async (cameraId?: string, micId?: string, restart = false): Promise<MediaRequestResult> => {
     const requestedCamera = cameraId ?? selectionRef.current.camera;
     const requestedMic = micId ?? selectionRef.current.mic;
     const requestId = ++requestIdRef.current;
@@ -122,10 +127,33 @@ export function useMediaSession(assessmentActive: boolean) {
     dispatch({ type: "requesting" });
 
     try {
+      if (!window.isSecureContext) {
+        throw new Error("Camera and microphone access requires HTTPS. Open the secure assessment URL to continue.");
+      }
       if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Media devices are not available in this browser.");
+        throw new Error("Camera and microphone access is not available in this browser. Update your browser and try again.");
       }
 
+      // A recovery request must release the stuck capture first. Opening a
+      // second stream while the old one owns the devices can perpetuate the
+      // muted-track state, particularly on iOS.
+      if (restart) {
+        stopSessionTracks(streamRef.current);
+        streamRef.current = null;
+      }
+
+      // Where supported, keep prompt playback and capture in the same iOS
+      // audio session instead of switching microphone routing between them.
+      const audioSession = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (audioSession && !restoreAudioSessionRef.current) {
+        const previousType = audioSession.type;
+        try {
+          audioSession.type = "play-and-record";
+          restoreAudioSessionRef.current = () => {
+            try { audioSession.type = previousType; } catch { /* optional API */ }
+          };
+        } catch { /* This optional API is not available in every browser. */ }
+      }
       const nextStream = await navigator.mediaDevices.getUserMedia({
         video: requestedCamera ? { deviceId: { exact: requestedCamera } } : true,
         audio: requestedMic ? { deviceId: { exact: requestedMic } } : true,
@@ -142,6 +170,11 @@ export function useMediaSession(assessmentActive: boolean) {
       if (!videoTrack || !audioTrack || videoTrack.readyState !== "live" || audioTrack.readyState !== "live") {
         stopTracks(nextStream);
         throw new Error("A live camera and microphone are both required.");
+      }
+
+      if (!await waitForCaptureReady(nextStream)) {
+        const device = audioTrack.muted ? "microphone" : "camera";
+        throw new Error(`Your ${device} is connected, but the browser is not receiving media from it. Check its hardware mute/privacy switch and your system input settings, then check the devices again.`);
       }
 
       const availableDevices = await navigator.mediaDevices.enumerateDevices();
@@ -163,6 +196,10 @@ export function useMediaSession(assessmentActive: boolean) {
       stopTracks(pendingStream);
       const message = describeMediaError(error);
       if (requestId !== requestIdRef.current) return { ok: false, error: message };
+      if (!streamRef.current) {
+        restoreAudioSessionRef.current?.();
+        restoreAudioSessionRef.current = null;
+      }
       dispatch({ type: "failed", error: message });
       return { ok: false, error: message };
     }
@@ -191,10 +228,12 @@ export function useMediaSession(assessmentActive: boolean) {
     if (!assessmentActive || !stream) return;
 
     const onVideoLost = (event: Event) => {
+      if (event.type === "mute" && !recordingActive) return;
       if (event.currentTarget instanceof MediaStreamTrack && intentionallyStoppedTracksRef.current.has(event.currentTarget)) return;
       dispatch({ type: "issue", issue: "The camera connection was lost. This assessment requires continuous video." });
     };
     const onAudioLost = (event: Event) => {
+      if (event.type === "mute" && !recordingActive) return;
       if (event.currentTarget instanceof MediaStreamTrack && intentionallyStoppedTracksRef.current.has(event.currentTarget)) return;
       dispatch({ type: "issue", issue: "The microphone connection was lost. This assessment requires continuous audio." });
     };
@@ -222,19 +261,39 @@ export function useMediaSession(assessmentActive: boolean) {
         track.removeEventListener("mute", onAudioLost);
       });
     };
-  }, [assessmentActive, state.stream]);
+  }, [assessmentActive, recordingActive, state.stream]);
 
   useEffect(() => {
+    // Fast Refresh and Strict Mode replay effects without ending the session.
+    // Cancel disposal when this effect is immediately set up again.
+    if (disposalTimerRef.current !== null) {
+      clearTimeout(disposalTimerRef.current);
+      disposalTimerRef.current = null;
+    }
     const stopOnExit = () => {
+      requestIdRef.current += 1;
       stopSessionTracks(streamRef.current);
       streamRef.current = null;
+      restoreAudioSessionRef.current?.();
+      restoreAudioSessionRef.current = null;
     };
     window.addEventListener("pagehide", stopOnExit);
     return () => {
       window.removeEventListener("pagehide", stopOnExit);
-      stopOnExit();
+      disposalTimerRef.current = setTimeout(() => {
+        disposalTimerRef.current = null;
+        stopOnExit();
+      }, 0);
     };
   }, [stopSessionTracks]);
 
-  return { ...state, request, changeCamera, changeMic, stop };
+  const clearRecoveredIssue = useCallback(() => {
+    const stream = streamRef.current;
+    const tracks = [stream?.getVideoTracks()[0], stream?.getAudioTracks()[0]];
+    if (tracks.every((track) => track && track.readyState === "live" && track.enabled && !track.muted)) {
+      dispatch({ type: "issue", issue: "" });
+    }
+  }, []);
+
+  return { ...state, request, changeCamera, changeMic, stop, clearRecoveredIssue };
 }

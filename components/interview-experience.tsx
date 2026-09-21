@@ -1,18 +1,19 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import {
-  addTransitionType,
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
-  ViewTransition,
 } from "react";
 
+import { waitForCaptureReady } from "@/components/interview/capture-readiness";
+import { createAnswerRecorder, recordedBlob } from "@/components/interview/recording-format";
+import { StageTransition } from "@/components/interview/stage-transition";
+import { useStageTransition } from "@/components/interview/use-stage-transition";
+import CodingStage from "@/components/interview/coding-stage";
 import CompleteStage from "@/components/interview/complete-stage";
 import {
   assessment,
@@ -23,40 +24,12 @@ import {
   type AnswerMode,
   type CodeLanguage,
   type Stage,
-  type TestStatus,
 } from "@/components/interview/config";
 import ConversationStage from "@/components/interview/conversation-stage";
 import { CountdownStage, SetupStage, WelcomeStage } from "@/components/interview/entry-stages";
 import ExplanationStage from "@/components/interview/explanation-stage";
-import { AssessmentFrame, IntegrityDialog, RoomHeader } from "@/components/interview/shared";
+import { IntegrityDialog } from "@/components/interview/shared";
 import { useMediaSession } from "@/components/interview/use-media-session";
-
-const CodingStage = dynamic(() => import("@/components/interview/coding-stage"), {
-  ssr: false,
-  loading: CodingStageLoading,
-});
-
-function CodingStageLoading() {
-  return (
-    <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink" aria-busy="true">
-      <RoomHeader label="Coding exercise" detail="Loading editor" />
-      <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_var(--assessment-rail)]">
-        <section className="order-2 min-h-44 animate-pulse rounded-[var(--assessment-radius)] border border-line bg-surface md:order-1 md:h-full" aria-hidden="true">
-          <div className="h-12 border-b border-line" />
-          <div className="grid h-[calc(100%-3rem)] grid-cols-[3rem_minmax(0,1fr)] bg-code-surface">
-            <div className="border-r border-code-line bg-code-gutter" />
-            <div className="space-y-3 p-4">
-              <div className="h-3 w-2/3 rounded-full bg-surface-strong" />
-              <div className="h-3 w-4/5 rounded-full bg-surface-strong" />
-              <div className="h-3 w-1/2 rounded-full bg-surface-strong" />
-            </div>
-          </div>
-        </section>
-        <aside className="order-1 min-h-28 animate-pulse rounded-[var(--assessment-radius)] border border-line bg-surface md:order-2 md:h-full" aria-hidden="true" />
-      </AssessmentFrame>
-    </main>
-  );
-}
 
 type SessionState = {
   stage: Stage;
@@ -69,7 +42,6 @@ type SessionState = {
   language: CodeLanguage;
   code: string;
   codeDrafts: Record<CodeLanguage, string>;
-  testStatus: TestStatus;
 };
 
 type SessionAction =
@@ -85,19 +57,8 @@ type SessionAction =
   | { type: "language"; language: CodeLanguage }
   | { type: "code"; code: string }
   | { type: "code-workspace"; language: CodeLanguage; drafts: Record<CodeLanguage, string> }
-  | { type: "test-status"; status: TestStatus }
   | { type: "begin-explanation" }
   | { type: "complete" };
-
-type StageTransition =
-  | "assessment-open"
-  | "assessment-back"
-  | "assessment-launch"
-  | "assessment-live"
-  | "assessment-question"
-  | "assessment-workspace"
-  | "assessment-handoff"
-  | "assessment-complete";
 
 const initialSession: SessionState = {
   stage: "welcome",
@@ -110,7 +71,6 @@ const initialSession: SessionState = {
   language: "typescript",
   code: starterCode,
   codeDrafts: { ...starterCodeDrafts },
-  testStatus: "idle",
 };
 
 function sessionReducer(state: SessionState, action: SessionAction): SessionState {
@@ -132,15 +92,13 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
     case "next-question":
       return { ...state, questionIndex: state.questionIndex + 1, answerMode: "asking", answerStartedAt: null };
     case "begin-coding":
-      return { ...state, stage: "coding", answerMode: "saved", answerStartedAt: null, testStatus: "idle" };
+      return { ...state, stage: "coding", answerMode: "saved", answerStartedAt: null };
     case "language":
-      return { ...state, language: action.language, code: state.codeDrafts[action.language], testStatus: "idle" };
+      return { ...state, language: action.language, code: state.codeDrafts[action.language] };
     case "code":
       return { ...state, code: action.code, codeDrafts: { ...state.codeDrafts, [state.language]: action.code } };
     case "code-workspace":
       return { ...state, language: action.language, code: action.drafts[action.language], codeDrafts: action.drafts };
-    case "test-status":
-      return { ...state, testStatus: action.status };
     case "begin-explanation":
       return { ...state, stage: "explanation", answerMode: "asking", answerStartedAt: null };
     case "complete":
@@ -174,6 +132,19 @@ function hasLiveCaptureTracks(stream: MediaStream | null | undefined): stream is
     && !videoTrack.muted
     && !audioTrack.muted
   );
+}
+
+function describeCaptureTracks(stream: MediaStream | null | undefined) {
+  const unavailable = [
+    { name: "camera", track: stream?.getVideoTracks()[0] },
+    { name: "microphone", track: stream?.getAudioTracks()[0] },
+  ].flatMap(({ name, track }) => {
+    if (!track || track.readyState !== "live") return [`${name} stream has stopped or is unavailable`];
+    if (!track.enabled) return [`${name} track is disabled`];
+    if (track.muted) return [`${name} is connected but the browser is not receiving media from it; check the device mute/privacy switch and system input settings`];
+    return [];
+  });
+  return `Answer capture could not start: ${unavailable.join("; ")}. Select Retry answer capture to reconnect the recording stream.`;
 }
 
 function describeRecorderError(error?: unknown) {
@@ -210,35 +181,32 @@ export default function InterviewExperience() {
   const [captureRetryError, setCaptureRetryError] = useState("");
   const [captureRetrying, setCaptureRetrying] = useState(false);
   const assessmentActive = ["countdown", "conversation", "coding", "explanation"].includes(session.stage);
-  const media = useMediaSession(assessmentActive);
+  const media = useMediaSession(assessmentActive, session.answerMode === "answering" && (session.stage === "conversation" || session.stage === "explanation"));
   const stopMedia = media.stop;
   const stageRootRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<ActiveRecording | null>(null);
   const responseBlobsRef = useRef<Map<string, Blob>>(new Map());
   const pendingResponseKeyRef = useRef("");
-  const transitionTimerRef = useRef<number | null>(null);
-  const testTimerRef = useRef<number | null>(null);
+  const promptAudioRef = useRef<HTMLAudioElement>(null);
+  const playbackGenerationRef = useRef(0);
+  const [audioError, setAudioError] = useState("");
   const transitioningRef = useRef(false);
 
-  const dispatchWithTransition = useCallback((action: SessionAction, transition: StageTransition) => {
-    startTransition(() => {
-      addTransitionType(transition);
-      dispatch(action);
+  const { phase: transitionPhase, navigate: dispatchWithTransition, onAnimationComplete } = useStageTransition(dispatch);
+
+  const unlockPromptAudio = useCallback(() => {
+    const audio = promptAudioRef.current;
+    if (!audio) return;
+    // Ignore a late unlock completion once a real prompt has started.
+    const generation = ++playbackGenerationRef.current;
+    audio.muted = true;
+    void audio.play().then(() => {
+      if (generation !== playbackGenerationRef.current) return;
+      audio.pause();
+      audio.muted = false;
+    }).catch(() => {
+      if (generation === playbackGenerationRef.current) audio.muted = false;
     });
-  }, []);
-
-  const unlockSpeechSynthesis = useCallback(() => {
-    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
-    const synthesis = window.speechSynthesis;
-    synthesis.cancel();
-    synthesis.resume();
-    void synthesis.getVoices();
-
-    // Mobile browsers often require speech to be initialized inside a user gesture.
-    const unlockUtterance = new SpeechSynthesisUtterance(" ");
-    unlockUtterance.volume = 0.01;
-    unlockUtterance.rate = 10;
-    synthesis.speak(unlockUtterance);
   }, []);
 
   const clockEnabled = assessmentActive;
@@ -248,11 +216,9 @@ export default function InterviewExperience() {
   const answerElapsed = session.answerStartedAt ? Math.max(0, Math.floor((now - session.answerStartedAt) / 1000)) : 0;
   const sessionElapsed = session.assessmentStartedAt ? Math.max(0, Math.floor((now - session.assessmentStartedAt) / 1000)) : 0;
 
-  const activePrompt = useMemo(() => {
-    if (session.stage === "conversation") return assessment.questions[session.questionIndex].prompt;
-    if (session.stage === "explanation") return "Walk me through your approach and one tradeoff you considered.";
-    return "";
-  }, [session.questionIndex, session.stage]);
+  const promptAudioSrc = session.stage === "conversation"
+    ? assessment.questions[session.questionIndex].audio
+    : session.stage === "explanation" ? "/audio/sia/walkthrough.mp3" : null;
 
   const startAnswerRecorder = useCallback((responseKey: string, streamOverride?: MediaStream): RecorderStartResult => {
     pendingResponseKeyRef.current = responseKey;
@@ -260,14 +226,13 @@ export default function InterviewExperience() {
     if (!hasLiveCaptureTracks(stream)) {
       return {
         ok: false,
-        error: "Answer capture could not start because a live camera and microphone were not detected. Reconnect both devices, then retry capture.",
+        error: describeCaptureTracks(stream),
       };
     }
     if (typeof MediaRecorder === "undefined") return { ok: false, error: describeRecorderError() };
 
     try {
-      const preferredType = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
+      const recorder = createAnswerRecorder(stream);
       const active: ActiveRecording = { recorder, stream, chunks: [], responseKey, failed: false };
 
       recorder.addEventListener("dataavailable", (event) => {
@@ -314,7 +279,7 @@ export default function InterviewExperience() {
           settle(null);
           return;
         }
-        const blob = new Blob(active.chunks, { type: active.recorder.mimeType || "video/webm" });
+        const blob = recordedBlob(active.chunks, active.recorder.mimeType);
         active.chunks = [];
         settle(blob.size > 0 ? blob : null);
       };
@@ -334,7 +299,8 @@ export default function InterviewExperience() {
       active.recorder.addEventListener("stop", finalize, { once: true });
       active.recorder.addEventListener("error", fail, { once: true });
       try {
-        active.recorder.requestData();
+        // stop() emits the final dataavailable event before stop. A separate
+        // requestData() is unnecessary and can fail on browser encoders.
         active.recorder.stop();
       } catch {
         fail();
@@ -343,86 +309,62 @@ export default function InterviewExperience() {
   }, []);
 
   useEffect(() => {
-    if (!activePrompt || session.answerMode !== "asking" || captureIssue || media.integrityIssue) return;
+    if (!promptAudioSrc || session.answerMode !== "asking" || captureIssue || media.integrityIssue || transitionPhase !== "idle") return;
+    const audio = promptAudioRef.current;
+    if (!audio) return;
+    const generation = ++playbackGenerationRef.current;
     let cancelled = false;
     let started = false;
-    let fallbackTimer = 0;
-    let speechStarted = false;
-    let speechAttempt = 0;
-    const resumeTimers: number[] = [];
-    const schedule = window.setTimeout.bind(window);
+    const readinessAbort = new AbortController();
     const responseKey = session.stage === "conversation" ? `spoken-${session.questionIndex + 1}` : "walkthrough";
-
-    const beginAnswer = () => {
+    const beginAnswer = async () => {
       if (cancelled || started) return;
       started = true;
+      await waitForCaptureReady(media.stream, readinessAbort.signal);
+      if (cancelled) return;
       const result = startAnswerRecorder(responseKey);
       if (!result.ok) {
         setCaptureRetryError("");
         setCaptureIssue(result.error);
       }
     };
-
-    if ("speechSynthesis" in window && "SpeechSynthesisUtterance" in window) {
-      const synthesis = window.speechSynthesis;
-      const speakPrompt = () => {
-        if (cancelled) return;
-        speechAttempt += 1;
-        const utterance = new SpeechSynthesisUtterance(activePrompt);
-        const voices = synthesis.getVoices();
-        const voice = voices.find((candidate) => candidate.lang.toLowerCase().startsWith("en") && candidate.localService)
-          ?? voices.find((candidate) => candidate.lang.toLowerCase().startsWith("en"));
-        if (voice) utterance.voice = voice;
-        utterance.lang = voice?.lang || "en-US";
-        utterance.rate = 0.94;
-        utterance.pitch = 1.02;
-        utterance.volume = 1;
-        utterance.onstart = () => { speechStarted = true; };
-        utterance.onend = beginAnswer;
-        utterance.onerror = (event) => {
-          if (cancelled || event.error === "canceled" || event.error === "interrupted") return;
-          if (!speechStarted && speechAttempt < 2) {
-            resumeTimers.push(schedule(speakPrompt, 120));
-            return;
-          }
-          beginAnswer();
-        };
-
-        synthesis.cancel();
-        synthesis.resume();
-        synthesis.speak(utterance);
-      };
-
-      speakPrompt();
-      [100, 450, 1_200].forEach((delay) => {
-        resumeTimers.push(schedule(() => synthesis.resume(), delay));
-      });
-      resumeTimers.push(schedule(() => {
-        if (!speechStarted && !synthesis.speaking && speechAttempt < 2) speakPrompt();
-      }, 1_000));
-
-      const resumeWhenVisible = () => {
-        if (document.visibilityState === "visible") synthesis.resume();
-      };
-      document.addEventListener("visibilitychange", resumeWhenVisible);
-      fallbackTimer = schedule(beginAnswer, 30_000);
-
-      return () => {
-        cancelled = true;
-        window.clearTimeout(fallbackTimer);
-        resumeTimers.forEach((timer) => window.clearTimeout(timer));
-        document.removeEventListener("visibilitychange", resumeWhenVisible);
-        synthesis.cancel();
-      };
-    } else {
-      fallbackTimer = schedule(beginAnswer, 500);
-    }
-
+    const fail = () => {
+      if (!cancelled) setAudioError("Sia's question could not play. Select Play question to try again.");
+    };
+    // Keep the same unlocked audio element and avoid redundant source reloads.
+    if (audio.getAttribute("src") !== promptAudioSrc) audio.src = promptAudioSrc;
+    if (audio.readyState > 0) audio.currentTime = 0;
+    audio.muted = false;
+    const startupTimer = window.setTimeout(fail, 15_000);
+    const onPlaying = () => {
+      window.clearTimeout(startupTimer);
+      if (!cancelled) setAudioError("");
+    };
+    audio.addEventListener("playing", onPlaying);
+    audio.addEventListener("ended", beginAnswer);
+    audio.addEventListener("error", fail);
+    // Motion has finished revealing the page before the prompt starts.
+    void audio.play().catch(fail);
     return () => {
       cancelled = true;
-      window.clearTimeout(fallbackTimer);
+      readinessAbort.abort();
+      if (playbackGenerationRef.current === generation) playbackGenerationRef.current += 1;
+      window.clearTimeout(startupTimer);
+      audio.removeEventListener("playing", onPlaying);
+      audio.removeEventListener("ended", beginAnswer);
+      audio.removeEventListener("error", fail);
+      audio.pause();
     };
-  }, [activePrompt, captureIssue, media.integrityIssue, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder]);
+  }, [promptAudioSrc, captureIssue, media.integrityIssue, media.stream, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder, transitionPhase]);
+
+  const retryPromptAudio = () => {
+    const audio = promptAudioRef.current;
+    if (!audio) return;
+    audio.load();
+    void audio.play().then(() => setAudioError("")).catch(() => {
+      setAudioError("The question audio is still unavailable. Check your connection and select Play question again.");
+    });
+  };
 
   const retryAnswerCapture = useCallback(async () => {
     if (captureRetrying) return;
@@ -431,17 +373,20 @@ export default function InterviewExperience() {
 
     try {
       let stream = media.stream;
-      if (media.integrityIssue || !hasLiveCaptureTracks(stream)) {
-        const result = await media.request();
+      // Try the still-connected stream before opening competing capture on iOS.
+      if (!await waitForCaptureReady(stream)) {
+        const result = await media.request(undefined, undefined, true);
         if (!result.ok) {
           setCaptureRetryError(result.error);
           return;
         }
         stream = result.stream;
+        await waitForCaptureReady(stream);
       }
 
       const responseKey = pendingResponseKeyRef.current
         || (session.stage === "conversation" ? `spoken-${session.questionIndex + 1}` : "walkthrough");
+      media.clearRecoveredIssue();
       const result = startAnswerRecorder(responseKey, stream ?? undefined);
       if (!result.ok) {
         setCaptureRetryError(result.error);
@@ -473,7 +418,7 @@ export default function InterviewExperience() {
   useEffect(() => {
     if (session.stage !== "countdown" || !session.countdownDeadline) return;
     const delay = Math.max(0, session.countdownDeadline - Date.now());
-    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-interview" }, "assessment-live"), delay);
+    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-interview" }), delay);
     return () => window.clearTimeout(timer);
   }, [dispatchWithTransition, session.countdownDeadline, session.stage]);
 
@@ -526,9 +471,11 @@ export default function InterviewExperience() {
 
   useEffect(() => () => {
     void stopAnswerRecorder();
-    if (transitionTimerRef.current) window.clearTimeout(transitionTimerRef.current);
-    if (testTimerRef.current) window.clearTimeout(testTimerRef.current);
   }, [stopAnswerRecorder]);
+
+  useEffect(() => {
+    transitioningRef.current = false;
+  }, [session.stage, session.questionIndex]);
 
   const finishConversationAnswer = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
@@ -541,20 +488,10 @@ export default function InterviewExperience() {
       setCaptureIssue(describeRecorderError());
       return;
     }
-    dispatch({ type: "answer-saved" });
-    transitionTimerRef.current = window.setTimeout(() => {
-      transitioningRef.current = false;
-      if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" }, "assessment-question");
-      else dispatchWithTransition({ type: "begin-coding" }, "assessment-workspace");
-    }, 550);
-  }, [dispatchWithTransition, session.answerMode, session.questionIndex, stopAnswerRecorder]);
+    if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" });
+    else dispatchWithTransition({ type: "begin-coding" });
 
-  const runTests = useCallback(() => {
-    if (session.testStatus === "running") return;
-    dispatch({ type: "test-status", status: "running" });
-    if (testTimerRef.current) window.clearTimeout(testTimerRef.current);
-    testTimerRef.current = window.setTimeout(() => dispatch({ type: "test-status", status: "passed" }), 700);
-  }, [session.testStatus]);
+  }, [dispatchWithTransition, session.answerMode, session.questionIndex, stopAnswerRecorder]);
 
   const finishInterview = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
@@ -567,14 +504,17 @@ export default function InterviewExperience() {
       setCaptureIssue(describeRecorderError());
       return;
     }
-    dispatchWithTransition({ type: "complete" }, "assessment-complete");
-    stopMedia();
+    dispatchWithTransition({ type: "complete" });
     try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
-  }, [dispatchWithTransition, session.answerMode, stopAnswerRecorder, stopMedia]);
+  }, [dispatchWithTransition, session.answerMode, stopAnswerRecorder]);
+
+  useEffect(() => {
+    if (session.stage === "complete") stopMedia();
+  }, [session.stage, stopMedia]);
 
   const goBack = () => {
     stopMedia();
-    dispatchWithTransition({ type: "stage", stage: "welcome" }, "assessment-back");
+    dispatchWithTransition({ type: "stage", stage: "welcome" });
   };
 
   const announcement = useMemo(() => {
@@ -596,8 +536,6 @@ export default function InterviewExperience() {
         if (session.answerMode === "answering") return `Answer capture started for question ${session.questionIndex + 1}.`;
         return `Answer ${session.questionIndex + 1} captured.`;
       case "coding":
-        if (session.testStatus === "running") return "Preparing the sample preview.";
-        if (session.testStatus === "passed") return "Sample preview ready.";
         return "Coding section ready.";
       case "explanation":
         if (session.answerMode === "asking") return "Sia is asking for your code explanation.";
@@ -606,12 +544,9 @@ export default function InterviewExperience() {
       case "complete":
         return "Interview finished.";
     }
-  }, [assessmentActive, captureIssue, countdown, media.error, media.integrityIssue, media.status, session.answerMode, session.questionIndex, session.stage, session.testStatus]);
+  }, [assessmentActive, captureIssue, countdown, media.error, media.integrityIssue, media.status, session.answerMode, session.questionIndex, session.stage]);
 
-  const dialogOpen = Boolean(captureIssue || (assessmentActive && media.integrityIssue));
-  const transitionKey = session.stage === "conversation"
-    ? `conversation-${session.questionIndex}`
-    : session.stage;
+  const dialogOpen = Boolean(audioError || captureIssue || (assessmentActive && media.integrityIssue));
 
   useEffect(() => {
     const root = stageRootRef.current;
@@ -626,26 +561,10 @@ export default function InterviewExperience() {
         Skip to Assessment
       </a>
       <div ref={stageRootRef} className="contents" aria-hidden={dialogOpen || undefined}>
-        <ViewTransition
-          key={transitionKey}
-          name="assessment-stage"
-          share={{
-            "assessment-open": "assessment-open",
-            "assessment-back": "assessment-back",
-            "assessment-launch": "assessment-launch",
-            "assessment-live": "assessment-live",
-            "assessment-question": "assessment-question",
-            "assessment-workspace": "assessment-workspace",
-            "assessment-handoff": "assessment-handoff",
-            "assessment-complete": "assessment-complete",
-            default: "assessment-stage-swap",
-          }}
-          default="none"
-        >
-          <div className="assessment-stage">
+          <StageTransition stageKey={`${session.stage}-${session.questionIndex}`} busy={transitionPhase !== "idle"} onComplete={onAnimationComplete}>
             {session.stage === "welcome" && (
               <WelcomeStage
-                onContinue={() => dispatchWithTransition({ type: "stage", stage: "setup" }, "assessment-open")}
+                onContinue={() => dispatchWithTransition({ type: "stage", stage: "setup" })}
               />
             )}
             {session.stage === "setup" && (
@@ -663,8 +582,8 @@ export default function InterviewExperience() {
                 onRequestMedia={() => void media.request()}
                 onBack={goBack}
                 onStart={() => {
-                  unlockSpeechSynthesis();
-                  dispatchWithTransition({ type: "countdown", deadline: Date.now() + 3000 }, "assessment-launch");
+                  unlockPromptAudio();
+                  dispatchWithTransition({ type: "countdown", deadline: Date.now() + 3000 });
                 }}
               />
             )}
@@ -684,12 +603,10 @@ export default function InterviewExperience() {
                 code={session.code}
                 language={session.language}
                 sessionElapsed={sessionElapsed}
-                testStatus={session.testStatus}
                 stream={media.stream}
                 onCodeChange={(code) => dispatch({ type: "code", code })}
                 onLanguageChange={(language) => dispatch({ type: "language", language })}
-                onRunTests={runTests}
-                onSubmit={() => dispatchWithTransition({ type: "begin-explanation" }, "assessment-handoff")}
+                onSubmit={() => dispatchWithTransition({ type: "begin-explanation" })}
               />
             )}
             {session.stage === "explanation" && (
@@ -704,10 +621,10 @@ export default function InterviewExperience() {
               />
             )}
             {session.stage === "complete" && <CompleteStage />}
-          </div>
-        </ViewTransition>
+          </StageTransition>
       </div>
 
+      <audio ref={promptAudioRef} src="/audio/sia/introduction-v2.mp3" preload="auto" />
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
 
       {captureIssue ? (
@@ -727,6 +644,14 @@ export default function InterviewExperience() {
           busy={media.status === "requesting"}
           error={media.status === "unavailable" ? media.error : ""}
           onReconnect={async () => { await media.request(); }}
+        />
+      ) : audioError ? (
+        <IntegrityDialog
+          title="Play Sia's question"
+          issue={audioError}
+          guidance="Your answer recording will begin after the question finishes playing."
+          actionLabel="Play question"
+          onReconnect={retryPromptAudio}
         />
       ) : null}
     </>

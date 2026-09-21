@@ -8,7 +8,6 @@ export type Stage =
   | "complete";
 
 export type AnswerMode = "asking" | "answering" | "saved";
-export type TestStatus = "idle" | "running" | "passed";
 export type MediaStatus = "idle" | "requesting" | "ready" | "unavailable";
 export type CodeLanguage =
   | "typescript"
@@ -50,29 +49,32 @@ export const assessment = {
   durationMinutes: 35,
   codingLanguages: codeLanguageOrder,
   codingChallenge: {
-    title: "First unique character",
+    title: "First Non-Repeating Character",
     description:
-      "Return the index of the first character that appears exactly once. Return -1 if none exists.",
+      "Given a string called value, find the first character, reading from left to right, that appears only once in the string. Return its index, counting from 0. If every character repeats, return -1.",
+    task: "Complete the provided function. Return the index as an integer rather than printing it.",
+    complexity: "Your solution should run in O(n) time, where n is the string length. Be ready to explain how much extra space it uses.",
     examples: [
-      { input: "leetcode", output: "0" },
-      { input: "loveleetcode", output: "2" },
-      { input: "aabb", output: "-1" },
+      { input: "leetcode", output: "0", explanation: "The letter 'l' appears once. It is the first character, so its index is 0." },
+      { input: "loveleetcode", output: "2", explanation: "Both 'l' and 'o' appear more than once. The next character, 'v', appears once, so return its index, 2." },
+      { input: "aabb", output: "-1", explanation: "Both 'a' and 'b' repeat, so return -1." },
     ],
     constraints: [
-      "The input contains 1 to 100,000 characters",
-      "The input contains lowercase English letters",
-      "Aim for linear time and linear or better auxiliary space",
+      "1 ≤ value.length ≤ 100,000",
+      "value contains only lowercase English letters (a–z).",
     ],
   },
   questions: [
     {
       label: "Introduction",
+      audio: "/audio/sia/introduction-v2.mp3",
       prompt:
         "Tell me a little about yourself and what drew you to frontend engineering.",
       note: "Focus on the experience that is most relevant to this role.",
     },
     {
       label: "Experience",
+      audio: "/audio/sia/experience.mp3",
       prompt:
         "Tell me about a project where you improved a user experience. What was your role, and what changed?",
       note: "Describe your decisions, your contribution, and the outcome.",

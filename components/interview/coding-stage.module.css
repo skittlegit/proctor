@@ -1,0 +1,54 @@
+/* Local editor palette stays independent of the page theme. */
+.workspace[data-editor-theme="light"] {
+  --background: #f4f4f1;
+  --foreground: #111311;
+  --surface: #fbfbf9;
+  --surface-soft: #eeefeb;
+  --surface-strong: #e2e4df;
+  --ink-soft: #343834;
+  --muted: #626862;
+  --line: #d8dbd5;
+  --brand: #171a18;
+  --brand-hover: #050605;
+  --brand-soft: #e7e9e4;
+  --on-brand: #ffffff;
+  --code-surface: #f0f2f0;
+  --code-gutter: #e4e7e4;
+  --code-line: #d2d7d3;
+  --editor-selection: #cfd4ce;
+  --syntax-keyword: #6941a5;
+  --syntax-comment: #515c55;
+  --syntax-function: #20558b;
+  --syntax-string: #25613c;
+  --syntax-number: #914b18;
+  --syntax-type: #14646b;
+  --editor-active-line: #e9ede8;
+  color-scheme: light;
+}
+
+.workspace[data-editor-theme="dark"] {
+  --background: #111210;
+  --foreground: #f1f0eb;
+  --surface: #1a1c19;
+  --surface-soft: #22241f;
+  --surface-strong: #2d302a;
+  --ink-soft: #d3d2cb;
+  --muted: #a3a59f;
+  --line: #383b34;
+  --brand: #eeede7;
+  --brand-hover: #ffffff;
+  --brand-soft: #2b2e28;
+  --on-brand: #111311;
+  --code-surface: #161814;
+  --code-gutter: #121310;
+  --code-line: #30332c;
+  --editor-selection: #3a4039;
+  --syntax-keyword: #d1b2fa;
+  --syntax-comment: #a8b1a5;
+  --syntax-function: #9dc9ff;
+  --syntax-string: #a3d9ac;
+  --syntax-number: #f2bd88;
+  --syntax-type: #88d4d7;
+  --editor-active-line: #282e25;
+  color-scheme: dark;
+}

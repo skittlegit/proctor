@@ -31,8 +31,13 @@
   --code-gutter: #e4e7e4;
   --code-line: #d2d7d3;
   --editor-selection: #cfd4ce;
-  --syntax-keyword: #476253;
-  --syntax-comment: #777d77;
+  --syntax-keyword: #6941a5;
+  --syntax-comment: #515c55;
+  --syntax-function: #20558b;
+  --syntax-string: #25613c;
+  --syntax-number: #914b18;
+  --syntax-type: #14646b;
+  --editor-active-line: #e9ede8;
   --shell-header: 60px;
   --assessment-outer: 1rem;
   --assessment-gap: 1rem;
@@ -75,8 +80,13 @@
   --code-gutter: #121310;
   --code-line: #30332c;
   --editor-selection: #3a4039;
-  --syntax-keyword: #9fc0ac;
-  --syntax-comment: #858b83;
+  --syntax-keyword: #d1b2fa;
+  --syntax-comment: #a8b1a5;
+  --syntax-function: #9dc9ff;
+  --syntax-string: #a3d9ac;
+  --syntax-number: #f2bd88;
+  --syntax-type: #88d4d7;
+  --editor-active-line: #282e25;
   color-scheme: dark;
 }
 
@@ -267,114 +277,6 @@ textarea {
   background: var(--background);
 }
 
-@supports not (view-transition-name: none) {
-  .assessment-stage {
-    animation: assessment-stage-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-}
-
-::view-transition {
-  pointer-events: none;
-}
-
-::view-transition-group(.assessment-stage-swap),
-::view-transition-group(.assessment-open),
-::view-transition-group(.assessment-back),
-::view-transition-group(.assessment-launch),
-::view-transition-group(.assessment-live),
-::view-transition-group(.assessment-question),
-::view-transition-group(.assessment-workspace),
-::view-transition-group(.assessment-handoff),
-::view-transition-group(.assessment-complete) {
-  animation-duration: 420ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-::view-transition-old(.assessment-stage-swap) {
-  animation: assessment-fade-out 150ms ease-in both;
-}
-
-::view-transition-new(.assessment-stage-swap) {
-  animation: assessment-fade-in 260ms cubic-bezier(0.22, 1, 0.36, 1) 45ms both;
-}
-
-/* Invitation -> setup: the next step settles upward into the same shell. */
-::view-transition-old(.assessment-open) {
-  animation: assessment-soft-out 180ms ease-in both;
-}
-
-::view-transition-new(.assessment-open) {
-  animation: assessment-rise-in 360ms cubic-bezier(0.22, 1, 0.36, 1) 35ms both;
-}
-
-/* Setup -> invitation: reverse the spatial direction for a clear return. */
-::view-transition-old(.assessment-back) {
-  animation: assessment-slide-right-out 220ms ease-in both;
-}
-
-::view-transition-new(.assessment-back) {
-  animation: assessment-slide-left-in 380ms cubic-bezier(0.22, 1, 0.36, 1) 30ms both;
-}
-
-/* Setup -> countdown: focus contracts toward the central countdown. */
-::view-transition-old(.assessment-launch) {
-  animation: assessment-launch-out 240ms ease-in both;
-}
-
-::view-transition-new(.assessment-launch) {
-  animation: assessment-countdown-in 400ms cubic-bezier(0.16, 1, 0.3, 1) 35ms both;
-}
-
-/* Countdown -> live room: the countdown releases into the interview. */
-::view-transition-old(.assessment-live) {
-  animation: assessment-countdown-out 250ms ease-in both;
-}
-
-::view-transition-new(.assessment-live) {
-  animation: assessment-live-in 380ms cubic-bezier(0.22, 1, 0.36, 1) 25ms both;
-}
-
-/* Spoken prompt changes stay in-place and read like a fresh question. */
-::view-transition-old(.assessment-question) {
-  animation: assessment-question-out 180ms ease-in both;
-}
-
-::view-transition-new(.assessment-question) {
-  animation: assessment-question-in 320ms cubic-bezier(0.22, 1, 0.36, 1) 30ms both;
-}
-
-/* Conversation -> coding: horizontal movement communicates progression. */
-::view-transition-old(.assessment-workspace) {
-  animation: assessment-workspace-out 240ms ease-in both;
-}
-
-::view-transition-new(.assessment-workspace) {
-  animation: assessment-workspace-in 400ms cubic-bezier(0.22, 1, 0.36, 1) 25ms both;
-}
-
-/* Code -> walkthrough: retain continuity without another directional slide. */
-::view-transition-old(.assessment-handoff) {
-  animation: assessment-depth-out 220ms ease-in both;
-}
-
-::view-transition-new(.assessment-handoff) {
-  animation: assessment-depth-in 380ms cubic-bezier(0.22, 1, 0.36, 1) 35ms both;
-}
-
-/* Final submission gets a calm, conclusive reveal. */
-::view-transition-old(.assessment-complete) {
-  animation: assessment-complete-out 220ms ease-in both;
-}
-
-::view-transition-new(.assessment-complete) {
-  animation: assessment-complete-in 440ms cubic-bezier(0.16, 1, 0.3, 1) 45ms both;
-}
-
-::view-transition-group(assessment-header) {
-  z-index: 50;
-  animation-duration: 280ms;
-}
-
 @media (min-width: 1024px) and (max-height: 800px) {
   :root {
     --shell-header: 56px;
@@ -447,158 +349,6 @@ button:disabled {
   50% {
     transform: scale(1.04);
     opacity: 1;
-  }
-}
-
-@keyframes assessment-stage-leave {
-  to {
-    opacity: 0;
-    filter: blur(2px);
-    transform: scale(0.995);
-  }
-}
-
-@keyframes assessment-fade-out {
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes assessment-fade-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes assessment-soft-out {
-  to {
-    opacity: 0;
-    transform: scale(0.992);
-  }
-}
-
-@keyframes assessment-rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.995);
-  }
-}
-
-@keyframes assessment-slide-right-out {
-  to {
-    opacity: 0;
-    transform: translateX(28px);
-  }
-}
-
-@keyframes assessment-slide-left-in {
-  from {
-    opacity: 0;
-    transform: translateX(-32px);
-  }
-}
-
-@keyframes assessment-launch-out {
-  to {
-    opacity: 0;
-    filter: blur(2px);
-    transform: scale(0.975);
-  }
-}
-
-@keyframes assessment-countdown-in {
-  from {
-    opacity: 0;
-    filter: blur(3px);
-    transform: scale(0.88);
-  }
-}
-
-@keyframes assessment-countdown-out {
-  to {
-    opacity: 0;
-    filter: blur(4px);
-    transform: scale(1.09);
-  }
-}
-
-@keyframes assessment-live-in {
-  from {
-    opacity: 0;
-    filter: blur(2px);
-    transform: scale(0.992);
-  }
-}
-
-@keyframes assessment-question-out {
-  to {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes assessment-question-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-}
-
-@keyframes assessment-workspace-out {
-  to {
-    opacity: 0;
-    transform: translateX(-38px) scale(0.995);
-  }
-}
-
-@keyframes assessment-workspace-in {
-  from {
-    opacity: 0;
-    transform: translateX(42px) scale(0.995);
-  }
-}
-
-@keyframes assessment-depth-out {
-  to {
-    opacity: 0;
-    filter: blur(2px);
-    transform: scale(1.012);
-  }
-}
-
-@keyframes assessment-depth-in {
-  from {
-    opacity: 0;
-    filter: blur(3px);
-    transform: scale(0.982);
-  }
-}
-
-@keyframes assessment-complete-out {
-  to {
-    opacity: 0;
-    transform: translateY(-14px) scale(0.99);
-  }
-}
-
-@keyframes assessment-complete-in {
-  from {
-    opacity: 0;
-    filter: blur(2px);
-    transform: translateY(14px) scale(0.985);
-  }
-}
-
-@keyframes assessment-stage-enter {
-  from {
-    opacity: 0;
-    filter: blur(3px);
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
   }
 }
 

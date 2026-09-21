@@ -402,17 +402,18 @@ function DeviceSelect({
 
 export function CountdownStage({ count }: { count: number }) {
   return (
-    <main id="assessment-main" className="relative grid h-dvh place-items-center overflow-hidden bg-canvas px-5 text-center text-ink">
-      <div className="countdown-ring absolute size-[min(400px,78vw)] rounded-full border border-line" />
-      <div className="absolute size-[min(300px,58vw)] rounded-full border border-line/70" />
-      <div className="relative z-10">
+    <main id="assessment-main" className="relative grid h-dvh min-h-[32rem] place-items-center overflow-hidden bg-canvas px-5 text-center text-ink">
+      <div className="countdown-ring pointer-events-none absolute inset-0 m-auto size-[min(400px,78vw)] rounded-full border border-line" />
+      <div className="pointer-events-none absolute inset-0 m-auto size-[min(300px,58vw)] rounded-full border border-line/70" />
+      <div className="relative z-10 grid size-20 place-items-center">
         <span className="sr-only" role="status" aria-live="assertive" aria-atomic="true">
           Assessment starts in {count}
         </span>
         <div className="mx-auto grid size-20 place-items-center rounded-xl border border-ink bg-surface font-mono text-3xl font-medium text-ink" aria-hidden="true">
           {count}
         </div>
-        <h1 className="mt-7 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
+        <div className="absolute top-full mt-7 w-[calc(100vw-2.5rem)] max-w-md">
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
           Assessment starting
         </h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">
@@ -425,6 +426,7 @@ export function CountdownStage({ count }: { count: number }) {
           <span className="flex items-center gap-1.5 border-l border-line px-4 py-2">
             <Mic className="size-3.5" /> Mic on
           </span>
+        </div>
         </div>
       </div>
     </main>

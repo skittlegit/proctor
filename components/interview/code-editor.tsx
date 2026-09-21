@@ -18,12 +18,12 @@ const editorTheme = EditorView.theme({
     height: "100%",
     backgroundColor: "var(--code-surface)",
     color: "var(--foreground)",
-    fontSize: "0.875rem",
+    fontSize: "var(--editor-font-size, 0.9375rem)",
   },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": {
     fontFamily: "var(--font-geist-mono), ui-monospace, SFMono-Regular, Consolas, monospace",
-    lineHeight: "1.5rem",
+    lineHeight: "1.75rem",
     overflow: "auto",
   },
   ".cm-content": {
@@ -34,14 +34,19 @@ const editorTheme = EditorView.theme({
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--foreground)" },
   ".cm-gutters": {
     backgroundColor: "var(--code-gutter)",
-    color: "var(--muted)",
+    color: "var(--ink-soft)",
     borderRight: "1px solid var(--code-line)",
   },
   ".cm-lineNumbers .cm-gutterElement": {
     minWidth: "2.75rem",
     padding: "0 0.75rem 0 0.5rem",
   },
-  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "transparent" },
+  ".cm-activeLine": { backgroundColor: "var(--editor-active-line)" },
+  ".cm-activeLineGutter": {
+    backgroundColor: "var(--editor-active-line)",
+    color: "var(--foreground)",
+    fontWeight: "600",
+  },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": {
     backgroundColor: "var(--editor-selection) !important",
   },
@@ -71,7 +76,11 @@ const editorTheme = EditorView.theme({
 
 const editorHighlightStyle = HighlightStyle.define([
   { tag: [tags.keyword, tags.controlKeyword, tags.modifier, tags.meta], color: "var(--syntax-keyword)", fontWeight: "600" },
-  { tag: tags.comment, color: "var(--syntax-comment)", fontStyle: "italic" },
+  { tag: tags.comment, color: "var(--syntax-comment)", fontStyle: "normal" },
+  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName)], color: "var(--syntax-function)" },
+  { tag: [tags.string, tags.character], color: "var(--syntax-string)" },
+  { tag: [tags.number, tags.bool, tags.null], color: "var(--syntax-number)" },
+  { tag: [tags.typeName, tags.className], color: "var(--syntax-type)" },
 ]);
 
 const readOnlyTheme = EditorView.theme({

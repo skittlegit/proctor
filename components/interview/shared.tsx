@@ -386,9 +386,9 @@ export function AnswerStatus({
   }
 
   return (
-    <div className="min-h-[100px] w-full bg-surface-soft px-[var(--assessment-panel-pad)] py-3 text-left sm:min-h-[68px]">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:grid-cols-[auto_minmax(8rem,1fr)_auto] lg:gap-x-6">
-        <div className="flex min-w-0 items-center gap-2.5 sm:min-w-40">
+    <div className="@container min-h-[100px] w-full bg-surface-soft px-[var(--assessment-panel-pad)] py-3 text-left sm:min-h-[68px]">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 @min-[32rem]:grid-cols-[auto_minmax(8rem,1fr)_auto]">
+        <div className="flex min-w-0 items-center gap-2.5 @min-[32rem]:min-w-40">
           <span className="relative flex size-3 shrink-0" aria-hidden="true">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-danger/35" />
             <span className="relative m-auto size-2 rounded-full bg-danger" />
@@ -398,10 +398,10 @@ export function AnswerStatus({
             <p className="mt-0.5 font-mono text-xs text-muted">{formatTime(elapsed)} elapsed</p>
           </div>
         </div>
-        <div className="flex h-9 min-w-0 items-center justify-center border-l border-line pl-4 text-ink-soft sm:border-x sm:px-5">
+        <div className="flex h-9 min-w-0 items-center justify-center border-l border-line pl-4 text-ink-soft @min-[32rem]:border-x @min-[32rem]:px-5">
           <SoundBars count={17} className="h-7 w-full max-w-52 gap-1" />
         </div>
-        <Button size="sm" className="order-3 col-span-2 h-11 w-full shrink-0 px-3 sm:order-none sm:col-span-1 sm:w-auto sm:px-4" onClick={onDone}>
+        <Button size="sm" className="order-3 col-span-2 h-11 w-full shrink-0 px-3 @min-[32rem]:order-none @min-[32rem]:col-span-1 @min-[32rem]:w-auto @min-[32rem]:px-4" onClick={onDone}>
           <Check />
           <span className="hidden sm:inline">{doneLabel}</span>
           <span className="sm:hidden">{doneLabel === "Finish interview" ? "Finish" : "Done"}</span>
