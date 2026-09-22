@@ -7,7 +7,7 @@ export type Stage =
   | "explanation"
   | "complete";
 
-export type AnswerMode = "asking" | "answering" | "saved";
+export type AnswerMode = "asking" | "answering" | "saving" | "saved";
 export type MediaStatus = "idle" | "requesting" | "ready" | "unavailable";
 export type CodeLanguage =
   | "typescript"

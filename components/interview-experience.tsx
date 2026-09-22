@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import { waitForCaptureReady } from "@/components/interview/capture-readiness";
-import { createAnswerRecorder, recordedBlob } from "@/components/interview/recording-format";
+import { createAnswerRecorder, finishAnswerRecording } from "@/components/interview/recording-format";
 import { StageTransition } from "@/components/interview/stage-transition";
 import { useStageTransition } from "@/components/interview/use-stage-transition";
 import CodingStage from "@/components/interview/coding-stage";
@@ -50,6 +50,7 @@ type SessionAction =
   | { type: "countdown"; deadline: number }
   | { type: "begin-interview" }
   | { type: "answer-started"; startedAt: number }
+  | { type: "answer-saving" }
   | { type: "answer-reset" }
   | { type: "answer-saved" }
   | { type: "next-question" }
@@ -85,6 +86,8 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       return { ...state, stage: "conversation", countdownDeadline: null, answerMode: "asking", answerStartedAt: null };
     case "answer-started":
       return { ...state, answerMode: "answering", answerStartedAt: action.startedAt };
+    case "answer-saving":
+      return { ...state, answerMode: "saving" };
     case "answer-reset":
       return { ...state, answerMode: "asking", answerStartedAt: null };
     case "answer-saved":
@@ -265,46 +268,12 @@ export default function InterviewExperience() {
     recorderRef.current = null;
     if (!active) return Promise.resolve(null);
 
-    return new Promise((resolve) => {
-      let settled = false;
-      const settle = (blob: Blob | null) => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timeout);
-        if (blob) responseBlobsRef.current.set(active.responseKey, blob);
-        resolve(blob);
-      };
-      const finalize = () => {
-        if (active.failed || !hasLiveCaptureTracks(active.stream)) {
-          settle(null);
-          return;
-        }
-        const blob = recordedBlob(active.chunks, active.recorder.mimeType);
-        active.chunks = [];
-        settle(blob.size > 0 ? blob : null);
-      };
-      const fail = () => {
-        active.failed = true;
-        active.chunks = [];
-        responseBlobsRef.current.delete(active.responseKey);
-        settle(null);
-      };
-      const timeout = window.setTimeout(fail, 4_000);
-
-      if (active.recorder.state === "inactive") {
-        finalize();
-        return;
-      }
-
-      active.recorder.addEventListener("stop", finalize, { once: true });
-      active.recorder.addEventListener("error", fail, { once: true });
-      try {
-        // stop() emits the final dataavailable event before stop. A separate
-        // requestData() is unnecessary and can fail on browser encoders.
-        active.recorder.stop();
-      } catch {
-        fail();
-      }
+    // Check capture health before stopping, not while the encoder shuts down.
+    if (!hasLiveCaptureTracks(active.stream)) active.failed = true;
+    return finishAnswerRecording(active).then((blob) => {
+      if (blob) responseBlobsRef.current.set(active.responseKey, blob);
+      else responseBlobsRef.current.delete(active.responseKey);
+      return blob;
     });
   }, []);
 
@@ -480,6 +449,7 @@ export default function InterviewExperience() {
   const finishConversationAnswer = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
     transitioningRef.current = true;
+    dispatch({ type: "answer-saving" });
     const response = await stopAnswerRecorder();
     if (!response) {
       transitioningRef.current = false;
@@ -496,6 +466,7 @@ export default function InterviewExperience() {
   const finishInterview = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
     transitioningRef.current = true;
+    dispatch({ type: "answer-saving" });
     const response = await stopAnswerRecorder();
     if (!response) {
       transitioningRef.current = false;
@@ -523,6 +494,8 @@ export default function InterviewExperience() {
     if (media.status === "requesting") return "Checking camera and microphone access.";
     if (session.stage === "setup" && media.status === "ready") return "Camera and microphone are ready.";
     if (session.stage === "setup" && media.status === "unavailable") return media.error;
+
+    if (session.answerMode === "saving") return "Finishing your recording. Please wait.";
 
     switch (session.stage) {
       case "welcome":

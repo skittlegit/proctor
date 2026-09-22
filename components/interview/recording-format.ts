@@ -24,3 +24,42 @@ export function recordedBlob(chunks: Blob[], recorderMimeType: string): Blob {
   const type = recorderMimeType || chunks.find((chunk) => chunk.type)?.type || "";
   return new Blob(chunks, { type });
 }
+
+export function finishAnswerRecording(
+  active: { recorder: MediaRecorder; chunks: Blob[]; failed: boolean },
+  timeoutMs = 10_000,
+): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (blob: Blob | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      active.recorder.removeEventListener("stop", finalize);
+      active.recorder.removeEventListener("error", fail);
+      active.chunks = [];
+      resolve(blob);
+    };
+    const fail = () => {
+      active.failed = true;
+      settle(null);
+    };
+    const finalize = () => {
+      // The stop event follows the final encoded data. Source-track state
+      // after stopping cannot tell us whether that completed data is valid.
+      if (active.failed) return settle(null);
+      const blob = recordedBlob(active.chunks, active.recorder.mimeType);
+      settle(blob.size > 0 ? blob : null);
+    };
+    const timeout = setTimeout(fail, timeoutMs);
+    active.recorder.addEventListener("stop", finalize);
+    active.recorder.addEventListener("error", fail);
+    try {
+      // An unexpectedly inactive recorder may still have its final events
+      // queued. Wait for stop instead of saving incomplete chunks.
+      if (active.recorder.state !== "inactive") active.recorder.stop();
+    } catch {
+      fail();
+    }
+  });
+}

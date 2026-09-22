@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Standalone CommonJS test runner. */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const ts = require("typescript");
@@ -12,7 +13,7 @@ function load(file) {
 }
 
 const { waitForCaptureReady } = load("components/interview/capture-readiness.ts");
-const { createAnswerRecorder, recordedBlob } = load("components/interview/recording-format.ts");
+const { createAnswerRecorder, recordedBlob, finishAnswerRecording } = load("components/interview/recording-format.ts");
 const { attachCameraPreview } = load("components/interview/camera-preview.ts");
 class Track extends EventTarget {
   readyState = "live";
@@ -93,6 +94,45 @@ async function main() {
   const blob = recordedBlob([new Blob(["capture"], { type: "video/mp4" })], "");
   assert.equal(blob.type, "video/mp4");
   assert.equal(blob.size, 7);
+  class FinalizingRecorder extends EventTarget {
+    state = "recording";
+    mimeType = "video/mp4";
+    stop() { this.state = "inactive"; }
+  }
+  const capture = () => ({ recorder: new FinalizingRecorder(), chunks: [], failed: false });
+  const active = capture();
+  const finishing = finishAnswerRecording(active);
+  // Safari may deliver no chunks until stop; track state after stop is irrelevant.
+  audio.readyState = "ended";
+  active.chunks.push(new Blob(["final MP4"], { type: "video/mp4" }));
+  active.recorder.dispatchEvent(new Event("stop"));
+  assert.equal(await (await finishing).text(), "final MP4");
+  assert.deepEqual(active.chunks, []);
+  const empty = capture();
+  const emptyResult = finishAnswerRecording(empty);
+  empty.recorder.dispatchEvent(new Event("stop"));
+  assert.equal(await emptyResult, null);
+  const broken = capture();
+  broken.chunks.push(blob);
+  const brokenResult = finishAnswerRecording(broken);
+  broken.recorder.dispatchEvent(new Event("error"));
+  assert.equal(await brokenResult, null);
+  const interrupted = capture();
+  interrupted.failed = true;
+  interrupted.chunks.push(blob);
+  const interruptedResult = finishAnswerRecording(interrupted);
+  interrupted.recorder.dispatchEvent(new Event("stop"));
+  assert.equal(await interruptedResult, null);
+  const queued = capture();
+  queued.recorder.state = "inactive";
+  const queuedResult = finishAnswerRecording(queued);
+  queued.chunks.push(blob);
+  queued.recorder.dispatchEvent(new Event("stop"));
+  assert.equal((await queuedResult).size, blob.size);
+  const stalled = capture();
+  assert.equal(await finishAnswerRecording(stalled, 5), null);
+  assert.equal(stalled.failed, true);
+  stalled.recorder.dispatchEvent(new Event("stop"));
   console.log("Media compatibility checks passed: recovery, cancellation, missing tracks, MP4/WebM negotiation, encoder fallback, and blob type.");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

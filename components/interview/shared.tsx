@@ -377,6 +377,14 @@ export function AnswerStatus({
     );
   }
 
+  if (mode === "saving") {
+    return (
+      <div role="status" className="flex min-h-[100px] w-full items-center justify-center gap-2 bg-surface-soft px-[var(--assessment-panel-pad)] py-4 text-sm font-semibold text-ink-soft sm:min-h-[68px]">
+        <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> Finishing your recording...
+      </div>
+    );
+  }
+
   if (mode === "saved") {
     return (
       <div className="flex min-h-[100px] w-full items-center justify-center gap-2 bg-success-soft px-[var(--assessment-panel-pad)] py-4 text-sm font-semibold text-success sm:min-h-[68px]">
