@@ -34,7 +34,7 @@ import { useMediaSession } from "@/components/interview/use-media-session";
 type SessionState = {
   stage: Stage;
   consent: boolean;
-  countdownDeadline: number | null;
+  countdownCount: number;
   assessmentStartedAt: number | null;
   questionIndex: number;
   answerMode: AnswerMode;
@@ -47,8 +47,9 @@ type SessionState = {
 type SessionAction =
   | { type: "stage"; stage: Stage }
   | { type: "consent"; consent: boolean }
-  | { type: "countdown"; deadline: number }
-  | { type: "begin-interview" }
+  | { type: "countdown" }
+  | { type: "countdown-tick" }
+  | { type: "begin-interview"; startedAt: number }
   | { type: "answer-started"; startedAt: number }
   | { type: "answer-saving" }
   | { type: "answer-reset" }
@@ -64,7 +65,7 @@ type SessionAction =
 const initialSession: SessionState = {
   stage: "welcome",
   consent: false,
-  countdownDeadline: null,
+  countdownCount: 3,
   assessmentStartedAt: null,
   questionIndex: 0,
   answerMode: "asking",
@@ -81,9 +82,11 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
     case "consent":
       return { ...state, consent: action.consent };
     case "countdown":
-      return { ...state, stage: "countdown", countdownDeadline: action.deadline, assessmentStartedAt: action.deadline };
+      return { ...state, stage: "countdown", countdownCount: 3 };
+    case "countdown-tick":
+      return { ...state, countdownCount: Math.max(1, state.countdownCount - 1) };
     case "begin-interview":
-      return { ...state, stage: "conversation", countdownDeadline: null, answerMode: "asking", answerStartedAt: null };
+      return { ...state, stage: "conversation", assessmentStartedAt: action.startedAt, countdownCount: 3, answerMode: "asking", answerStartedAt: null };
     case "answer-started":
       return { ...state, answerMode: "answering", answerStartedAt: action.startedAt };
     case "answer-saving":
@@ -216,9 +219,8 @@ export default function InterviewExperience() {
   }, []);
 
   const clockEnabled = assessmentActive;
-  const tickRate = session.stage === "countdown" ? 100 : 1000;
-  const now = useAccurateClock(clockEnabled, tickRate);
-  const countdown = session.countdownDeadline ? Math.min(3, Math.max(1, Math.ceil((session.countdownDeadline - now) / 1000))) : 3;
+  const now = useAccurateClock(clockEnabled, 1000);
+  const countdown = session.countdownCount;
   const answerElapsed = session.answerStartedAt ? Math.max(0, Math.floor((now - session.answerStartedAt) / 1000)) : 0;
   const sessionElapsed = session.assessmentStartedAt ? Math.max(0, Math.floor((now - session.assessmentStartedAt) / 1000)) : 0;
 
@@ -403,11 +405,25 @@ export default function InterviewExperience() {
   }, [media.integrityIssue, session.answerMode, stopAnswerRecorder]);
 
   useEffect(() => {
-    if (session.stage !== "countdown" || !session.countdownDeadline) return;
-    const delay = Math.max(0, session.countdownDeadline - Date.now());
-    const timer = window.setTimeout(() => dispatchWithTransition({ type: "begin-interview" }), delay);
-    return () => window.clearTimeout(timer);
-  }, [dispatchWithTransition, session.countdownDeadline, session.stage]);
+    if (session.stage !== "countdown" || transitionPhase !== "idle") return;
+    // Schedule each number after its render instead of deriving it from a
+    // deadline: a delayed mobile frame must not jump from 3 straight to 1.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      clearTimeout(timer);
+      if (document.visibilityState !== "visible") return;
+      timer = setTimeout(() => {
+        if (countdown > 1) dispatch({ type: "countdown-tick" });
+        else dispatchWithTransition({ type: "begin-interview", startedAt: Date.now() });
+      }, 1000);
+    };
+    schedule();
+    document.addEventListener("visibilitychange", schedule);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", schedule);
+    };
+  }, [countdown, dispatchWithTransition, session.stage, transitionPhase]);
 
   useEffect(() => {
     try {
@@ -574,7 +590,7 @@ export default function InterviewExperience() {
                 onBack={goBack}
                 onStart={() => {
                   unlockPromptAudio();
-                  dispatchWithTransition({ type: "countdown", deadline: Date.now() + 3000 });
+                  dispatchWithTransition({ type: "countdown" });
                 }}
               />
             )}

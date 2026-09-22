@@ -167,12 +167,17 @@ async function main() {
   stopped.recorder.state = "inactive";
   stopped.chunks.push(blob);
   assert.equal((await finishAnswerRecording(stopped)).size, blob.size);
-  const stalled = capture();
-  assert.equal(await finishAnswerRecording(stalled, 5), null);
-  assert.equal(stalled.failed, true);
-  assert.match(stalled.failureReason, /did not finish/);
+  // No elapsed-time failure: completion is driven only by recorder events.
+  const delayed = capture();
+  let completed = false;
+  const delayedResult = finishAnswerRecording(delayed).then(result => { completed = true; return result; });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(completed, false);
+  assert.equal(delayed.failed, false);
+  delayed.chunks.push(blob);
+  delayed.recorder.dispatchEvent(new Event("stop"));
+  assert.equal((await delayedResult).size, blob.size);
   assert.match(empty.failureReason, /empty recording/);
-  stalled.recorder.dispatchEvent(new Event("stop"));
   console.log("Media compatibility checks passed: recovery, cancellation, missing tracks, MP4/WebM negotiation, encoder fallback, and blob type.");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; });

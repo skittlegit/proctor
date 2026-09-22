@@ -27,14 +27,12 @@ export function recordedBlob(chunks: Blob[], recorderMimeType: string): Blob {
 
 export function finishAnswerRecording(
   active: { recorder: MediaRecorder; chunks: Blob[]; failed: boolean; stopped?: boolean; failureReason?: string },
-  timeoutMs = 10_000,
 ): Promise<Blob | null> {
   return new Promise((resolve) => {
     let settled = false;
     const settle = (blob: Blob | null) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
       active.recorder.removeEventListener("stop", finalize);
       active.recorder.removeEventListener("error", fail);
       active.chunks = [];
@@ -53,11 +51,6 @@ export function finishAnswerRecording(
       if (!blob.size) active.failureReason = "The browser returned an empty recording.";
       settle(blob.size > 0 ? blob : null);
     };
-    const timeout = setTimeout(() => {
-      const bytes = active.chunks.reduce((total, chunk) => total + chunk.size, 0);
-      active.failureReason = `The browser encoder did not finish the recording (${active.recorder.mimeType || "default format"}; ${bytes} bytes received).`;
-      fail();
-    }, timeoutMs);
     active.recorder.addEventListener("stop", finalize);
     active.recorder.addEventListener("error", fail);
     if (active.stopped) { finalize(); return; }
