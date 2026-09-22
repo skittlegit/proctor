@@ -17,8 +17,10 @@ type MediaState = {
 
 type Action =
   | { type: "requesting" }
+  | { type: "preview"; stream: MediaStream }
   | { type: "ready"; stream: MediaStream; devices: MediaDeviceInfo[]; camera: string; mic: string }
-  | { type: "failed"; error: string }
+  | { type: "failed"; error: string; stream: MediaStream | null }
+  | { type: "restored" }
   | { type: "devices"; devices: MediaDeviceInfo[] }
   | { type: "issue"; issue: string }
   | { type: "stopped" };
@@ -41,6 +43,8 @@ function reducer(state: MediaState, action: Action): MediaState {
   switch (action.type) {
     case "requesting":
       return { ...state, status: "requesting", error: "" };
+    case "preview":
+      return { ...state, stream: action.stream };
     case "ready":
       return {
         ...state,
@@ -53,7 +57,12 @@ function reducer(state: MediaState, action: Action): MediaState {
         integrityIssue: "",
       };
     case "failed":
-      return { ...state, status: "unavailable", error: action.error };
+      return { ...state, stream: action.stream, status: "unavailable", error: action.error };
+    case "restored": {
+      if (!state.stream) return state;
+      const error = "The browser restored this page after camera and microphone capture stopped. Reconnect the devices to continue.";
+      return { ...state, stream: null, status: "unavailable", error, integrityIssue: error };
+    }
     case "devices":
       return { ...state, devices: action.devices };
     case "issue":
@@ -172,6 +181,9 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
         throw new Error("A live camera and microphone are both required.");
       }
 
+      // Mount/play the preview before waiting for camera frames. Some iOS
+      // capture pipelines don't unmute video until it has a playing consumer.
+      dispatch({ type: "preview", stream: nextStream });
       if (!await waitForCaptureReady(nextStream)) {
         const device = audioTrack.muted ? "microphone" : "camera";
         throw new Error(`Your ${device} is connected, but the browser is not receiving media from it. Check its hardware mute/privacy switch and your system input settings, then check the devices again.`);
@@ -200,7 +212,7 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
         restoreAudioSessionRef.current?.();
         restoreAudioSessionRef.current = null;
       }
-      dispatch({ type: "failed", error: message });
+      dispatch({ type: "failed", error: message, stream: streamRef.current });
       return { ok: false, error: message };
     }
   }, [stopSessionTracks]);
@@ -278,8 +290,13 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
       restoreAudioSessionRef.current = null;
     };
     window.addEventListener("pagehide", stopOnExit);
+    const onRestore = (event: PageTransitionEvent) => {
+      if (event.persisted) dispatch({ type: "restored" });
+    };
+    window.addEventListener("pageshow", onRestore);
     return () => {
       window.removeEventListener("pagehide", stopOnExit);
+      window.removeEventListener("pageshow", onRestore);
       disposalTimerRef.current = setTimeout(() => {
         disposalTimerRef.current = null;
         stopOnExit();

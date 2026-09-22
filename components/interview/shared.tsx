@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { type AnswerMode, formatTime } from "./config";
+import { attachCameraPreview } from "./camera-preview";
 
 export function AssessmentContent({
   children,
@@ -126,9 +127,8 @@ export const CandidatePreview = memo(function CandidatePreview({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
-    video.srcObject = stream;
-    if (stream) void video.play().catch(() => undefined);
+    if (!video || !stream) return;
+    return attachCameraPreview(video, stream);
   }, [stream]);
 
   return (

@@ -13,6 +13,7 @@ function load(file) {
 
 const { waitForCaptureReady } = load("components/interview/capture-readiness.ts");
 const { createAnswerRecorder, recordedBlob } = load("components/interview/recording-format.ts");
+const { attachCameraPreview } = load("components/interview/camera-preview.ts");
 class Track extends EventTarget {
   readyState = "live";
   enabled = true;
@@ -23,6 +24,35 @@ const audio = new Track();
 const stream = { getVideoTracks: () => [video], getAudioTracks: () => [audio] };
 
 async function main() {
+  const events = [];
+  global.document = new EventTarget();
+  global.document.visibilityState = "visible";
+  global.MediaStream = class {
+    constructor(tracks) { this.tracks = tracks; }
+  };
+  const preview = {
+    muted: false, defaultMuted: false, playsInline: false,
+    set srcObject(value) {
+      if (value) {
+        assert.equal(this.muted, true);
+        assert.equal(this.playsInline, true);
+        assert.deepEqual(value.tracks, [video]);
+      }
+      this.source = value;
+    },
+    play() { events.push("play"); return Promise.resolve(); },
+    pause() { events.push("pause"); },
+  };
+  const detach = attachCameraPreview(preview, stream);
+  video.dispatchEvent(new Event("unmute"));
+  assert.deepEqual(events, ["play", "play"]);
+  detach();
+  assert.equal(preview.source, null);
+  assert.equal(video.readyState, "live");
+  assert.equal(audio.readyState, "live");
+  video.dispatchEvent(new Event("unmute"));
+  document.dispatchEvent(new Event("visibilitychange"));
+  assert.deepEqual(events, ["play", "play", "pause"]);
   assert.equal(await waitForCaptureReady(stream), true);
   audio.muted = true;
   const recovery = waitForCaptureReady(stream);
