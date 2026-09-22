@@ -369,3 +369,8 @@ button:disabled {
     animation-delay: 0s !important;
   }
 }
+
+/* A single mounted page, without animation-driven application state. */
+.stage-enter { animation: stage-enter 180ms ease-out; }
+@keyframes stage-enter { from { opacity: 0.6; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stage-enter { animation: none; } }

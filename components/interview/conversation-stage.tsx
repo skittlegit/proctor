@@ -1,9 +1,20 @@
 "use client";
 
 import { Camera, Mic } from "lucide-react";
+import { useSyncExternalStore } from "react";
 
 import { assessment, formatTime, type AnswerMode } from "./config";
 import { AIOrb, AnswerStatus, AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
+
+
+function subscribeToViewport(onChange: () => void) {
+  const query = window.matchMedia("(min-width: 768px)");
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+const isDesktop = () => window.matchMedia("(min-width: 768px)").matches;
+const serverIsDesktop = () => false;
+
 
 export default function ConversationStage({
   questionIndex,
@@ -20,6 +31,7 @@ export default function ConversationStage({
   stream: MediaStream | null;
   onFinishAnswer: () => void;
 }) {
+  const desktop = useSyncExternalStore(subscribeToViewport, isDesktop, serverIsDesktop);
   const question = assessment.questions[questionIndex];
   const orbState = answerMode === "asking" ? "speaking" : answerMode === "answering" ? "listening" : "thinking";
   const responseState = answerMode === "asking"
@@ -43,7 +55,7 @@ export default function ConversationStage({
       <AssessmentFrame className="md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_var(--assessment-rail)]">
         <section className="flex h-[calc(100svh-var(--shell-total-header)-var(--assessment-outer)-var(--assessment-outer))] min-h-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full">
           <div className="grid shrink-0 grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 border-b border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-2 text-xs text-muted md:hidden">
-            <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />
+            {!desktop && <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />}
             <div className="min-w-0 space-y-1.5 text-left">
               <span className="block font-medium text-ink-soft">{responseState.label}</span>
               <span className="flex items-center gap-4"><span className="flex items-center gap-1.5"><Camera className="size-3.5" /> Camera on</span><span className="flex items-center gap-1.5"><Mic className="size-3.5" /> Mic on</span></span>
@@ -68,7 +80,7 @@ export default function ConversationStage({
         </section>
 
         <aside className="hidden gap-4 md:grid md:h-full md:min-h-0 md:grid-rows-[auto_minmax(0,1fr)]">
-          <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />
+          {desktop && <CandidatePreview stream={stream} className="w-full rounded-[var(--assessment-radius)]" />}
           <section className="flex min-h-0 flex-col justify-between border-y border-line py-5" aria-label="Live response status">
             <div className="px-1">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Live response</p>

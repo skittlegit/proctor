@@ -1,7 +1,10 @@
 ﻿"use client";
 
 import { FileCode2, LockKeyhole } from "lucide-react";
-import ReadOnlyCodeEditor from "./code-editor";
+import dynamic from "next/dynamic";
+const ReadOnlyCodeEditor = dynamic(() => import("./code-editor"), {
+  loading: () => <div className="p-4 text-sm text-muted">Loading editor...</div>,
+});
 
 import { Badge } from "@/components/ui/badge";
 

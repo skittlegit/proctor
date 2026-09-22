@@ -325,34 +325,6 @@ function ThemeToggle() {
   );
 }
 
-export function LockedDeviceStatus({ compact = false, className }: { compact?: boolean; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "grid gap-2",
-        compact ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-1 xl:grid-cols-2",
-        className,
-      )}
-      aria-label="Required devices are locked on"
-    >
-      <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-soft px-3 py-2.5">
-        <Camera className="size-4 text-brand" />
-        <div>
-          <p className="text-xs font-semibold text-ink-soft">Camera</p>
-          <p className="text-[11px] text-muted">Locked on</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 rounded-lg border border-line bg-surface-soft px-3 py-2.5">
-        <Mic className="size-4 text-brand" />
-        <div>
-          <p className="text-xs font-semibold text-ink-soft">Microphone</p>
-          <p className="text-[11px] text-muted">Locked on</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function AnswerStatus({
   mode,
   elapsed,

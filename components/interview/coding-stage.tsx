@@ -5,7 +5,10 @@ import { useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import CodeEditor from "./code-editor";
+import dynamic from "next/dynamic";
+const CodeEditor = dynamic(() => import("./code-editor"), {
+  loading: () => <div className="p-4 text-sm text-muted">Loading editor...</div>,
+});
 import { assessment, codeLanguages, formatTime, type CodeLanguage } from "./config";
 import { AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
 import styles from "./coding-stage.module.css";

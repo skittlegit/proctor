@@ -12,7 +12,6 @@ import {
 import { waitForCaptureReady } from "@/components/interview/capture-readiness";
 import { createAnswerRecorder, finishAnswerRecording } from "@/components/interview/recording-format";
 import { StageTransition } from "@/components/interview/stage-transition";
-import { useStageTransition } from "@/components/interview/use-stage-transition";
 import CodingStage from "@/components/interview/coding-stage";
 import CompleteStage from "@/components/interview/complete-stage";
 import {
@@ -53,7 +52,6 @@ type SessionAction =
   | { type: "answer-started"; startedAt: number }
   | { type: "answer-saving" }
   | { type: "answer-reset" }
-  | { type: "answer-saved" }
   | { type: "next-question" }
   | { type: "begin-coding" }
   | { type: "language"; language: CodeLanguage }
@@ -93,8 +91,6 @@ function sessionReducer(state: SessionState, action: SessionAction): SessionStat
       return { ...state, answerMode: "saving" };
     case "answer-reset":
       return { ...state, answerMode: "asking", answerStartedAt: null };
-    case "answer-saved":
-      return { ...state, answerMode: "saved", answerStartedAt: null };
     case "next-question":
       return { ...state, questionIndex: state.questionIndex + 1, answerMode: "asking", answerStartedAt: null };
     case "begin-coding":
@@ -201,7 +197,6 @@ export default function InterviewExperience() {
   const [audioError, setAudioError] = useState("");
   const transitioningRef = useRef(false);
 
-  const { phase: transitionPhase, navigate: dispatchWithTransition, onAnimationComplete } = useStageTransition(dispatch);
 
   const unlockPromptAudio = useCallback(() => {
     const audio = promptAudioRef.current;
@@ -306,7 +301,7 @@ export default function InterviewExperience() {
   }, []);
 
   useEffect(() => {
-    if (!promptAudioSrc || session.answerMode !== "asking" || captureIssue || media.integrityIssue || transitionPhase !== "idle") return;
+    if (!promptAudioSrc || session.answerMode !== "asking" || captureIssue || media.integrityIssue) return;
     const audio = promptAudioRef.current;
     if (!audio) return;
     const generation = ++playbackGenerationRef.current;
@@ -354,7 +349,7 @@ export default function InterviewExperience() {
       audio.removeEventListener("error", fail);
       audio.pause();
     };
-  }, [promptAudioSrc, captureIssue, media.integrityIssue, media.stream, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder, transitionPhase]);
+  }, [promptAudioSrc, captureIssue, media.integrityIssue, media.stream, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder]);
 
   const retryPromptAudio = () => {
     const audio = promptAudioRef.current;
@@ -421,7 +416,7 @@ export default function InterviewExperience() {
       if (document.visibilityState !== "visible") return;
       timer = setTimeout(() => {
         if (countdown > 1) dispatch({ type: "countdown-tick" });
-        else dispatchWithTransition({ type: "begin-interview", startedAt: Date.now() });
+        else dispatch({ type: "begin-interview", startedAt: Date.now() });
       }, 1000);
     };
     schedule();
@@ -430,7 +425,7 @@ export default function InterviewExperience() {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", schedule);
     };
-  }, [countdown, dispatchWithTransition, session.stage]);
+  }, [countdown, dispatch, session.stage]);
 
   useEffect(() => {
     try {
@@ -499,10 +494,10 @@ export default function InterviewExperience() {
       setCaptureIssue(recordingFailureRef.current + " Retry capture to replay the question and answer again.");
       return;
     }
-    if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" });
-    else dispatchWithTransition({ type: "begin-coding" });
+    if (session.questionIndex < assessment.questions.length - 1) dispatch({ type: "next-question" });
+    else dispatch({ type: "begin-coding" });
 
-  }, [dispatchWithTransition, session.answerMode, session.questionIndex, stopAnswerRecorder]);
+  }, [dispatch, session.answerMode, session.questionIndex, stopAnswerRecorder]);
 
   const finishInterview = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
@@ -516,9 +511,9 @@ export default function InterviewExperience() {
       setCaptureIssue(recordingFailureRef.current + " Retry capture to replay the question and answer again.");
       return;
     }
-    dispatchWithTransition({ type: "complete" });
+    dispatch({ type: "complete" });
     try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
-  }, [dispatchWithTransition, session.answerMode, stopAnswerRecorder]);
+  }, [dispatch, session.answerMode, stopAnswerRecorder]);
 
   useEffect(() => {
     if (session.stage === "complete") stopMedia();
@@ -526,7 +521,7 @@ export default function InterviewExperience() {
 
   const goBack = () => {
     stopMedia();
-    dispatchWithTransition({ type: "stage", stage: "welcome" });
+    dispatch({ type: "stage", stage: "welcome" });
   };
 
   const announcement = useMemo(() => {
@@ -575,10 +570,10 @@ export default function InterviewExperience() {
         Skip to Assessment
       </a>
       <div ref={stageRootRef} className="contents" aria-hidden={dialogOpen || undefined}>
-          <StageTransition stageKey={`${session.stage}-${session.questionIndex}`} busy={transitionPhase !== "idle"} onComplete={onAnimationComplete}>
+          <StageTransition stageKey={`${session.stage}-${session.questionIndex}`}>
             {session.stage === "welcome" && (
               <WelcomeStage
-                onContinue={() => dispatchWithTransition({ type: "stage", stage: "setup" })}
+                onContinue={() => dispatch({ type: "stage", stage: "setup" })}
               />
             )}
             {session.stage === "setup" && (
@@ -597,7 +592,7 @@ export default function InterviewExperience() {
                 onBack={goBack}
                 onStart={() => {
                   unlockPromptAudio();
-                  dispatchWithTransition({ type: "countdown" });
+                  dispatch({ type: "countdown" });
                 }}
               />
             )}
@@ -620,7 +615,7 @@ export default function InterviewExperience() {
                 stream={media.stream}
                 onCodeChange={(code) => dispatch({ type: "code", code })}
                 onLanguageChange={(language) => dispatch({ type: "language", language })}
-                onSubmit={() => dispatchWithTransition({ type: "begin-explanation" })}
+                onSubmit={() => dispatch({ type: "begin-explanation" })}
               />
             )}
             {session.stage === "explanation" && (
