@@ -1,6 +1,8 @@
 // Probe formats rather than inferring support from a browser name. Older
 // Safari records MP4; Chromium commonly records WebM.
 export function createAnswerRecorder(stream: MediaStream): MediaRecorder {
+  // Let the browser choose its native encoder before trying explicit formats.
+  try { return new MediaRecorder(stream); } catch { /* Try supported alternatives. */ }
   const formats = [
     "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
     "video/mp4",
@@ -26,7 +28,7 @@ export function recordedBlob(chunks: Blob[], recorderMimeType: string): Blob {
 }
 
 export function finishAnswerRecording(
-  active: { recorder: MediaRecorder; chunks: Blob[]; failed: boolean },
+  active: { recorder: MediaRecorder; chunks: Blob[]; failed: boolean; stopped?: boolean; failureReason?: string },
   timeoutMs = 10_000,
 ): Promise<Blob | null> {
   return new Promise((resolve) => {
@@ -41,6 +43,7 @@ export function finishAnswerRecording(
       resolve(blob);
     };
     const fail = () => {
+      active.failureReason ||= "The browser encoder failed while finishing the recording.";
       active.failed = true;
       settle(null);
     };
@@ -49,11 +52,16 @@ export function finishAnswerRecording(
       // after stopping cannot tell us whether that completed data is valid.
       if (active.failed) return settle(null);
       const blob = recordedBlob(active.chunks, active.recorder.mimeType);
+      if (!blob.size) active.failureReason = "The browser returned an empty recording.";
       settle(blob.size > 0 ? blob : null);
     };
-    const timeout = setTimeout(fail, timeoutMs);
+    const timeout = setTimeout(() => {
+      active.failureReason = "The browser encoder did not finish the recording.";
+      fail();
+    }, timeoutMs);
     active.recorder.addEventListener("stop", finalize);
     active.recorder.addEventListener("error", fail);
+    if (active.stopped) { finalize(); return; }
     try {
       // An unexpectedly inactive recorder may still have its final events
       // queued. Wait for stop instead of saving incomplete chunks.

@@ -115,6 +115,8 @@ type ActiveRecording = {
   chunks: Blob[];
   responseKey: string;
   failed: boolean;
+  stopped?: boolean;
+  failureReason?: string;
 };
 
 type RecorderStartResult =
@@ -189,7 +191,7 @@ export default function InterviewExperience() {
   const stageRootRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<ActiveRecording | null>(null);
   const responseBlobsRef = useRef<Map<string, Blob>>(new Map());
-  const pendingResponseKeyRef = useRef("");
+  const recordingFailureRef = useRef("");
   const promptAudioRef = useRef<HTMLAudioElement>(null);
   const playbackGenerationRef = useRef(0);
   const [audioError, setAudioError] = useState("");
@@ -202,7 +204,8 @@ export default function InterviewExperience() {
     if (!audio) return;
     // Ignore a late unlock completion once a real prompt has started.
     const generation = ++playbackGenerationRef.current;
-    audio.muted = true;
+    audio.src = "/audio/sia/unlock.wav";
+    audio.muted = false;
     void audio.play().then(() => {
       if (generation !== playbackGenerationRef.current) return;
       audio.pause();
@@ -224,7 +227,6 @@ export default function InterviewExperience() {
     : session.stage === "explanation" ? "/audio/sia/walkthrough.mp3" : null;
 
   const startAnswerRecorder = useCallback((responseKey: string, streamOverride?: MediaStream): RecorderStartResult => {
-    pendingResponseKeyRef.current = responseKey;
     const stream = streamOverride ?? media.stream;
     if (!hasLiveCaptureTracks(stream)) {
       return {
@@ -252,7 +254,17 @@ export default function InterviewExperience() {
         setCaptureIssue(describeRecorderError());
       });
 
-      recorder.start(500);
+      recorder.addEventListener("stop", () => {
+        active.stopped = true;
+        if (recorderRef.current !== active) return;
+        active.failed = true;
+        active.failureReason = "The browser stopped recording before you selected Done.";
+        recorderRef.current = null;
+        dispatch({ type: "answer-reset" });
+        setCaptureIssue(active.failureReason + " Retry capture to replay the question.");
+      });
+      // Collect the complete clip on stop; avoid forcing frequent MP4 fragments.
+      recorder.start();
       recorderRef.current = active;
       setCaptureIssue("");
       setCaptureRetryError("");
@@ -269,10 +281,16 @@ export default function InterviewExperience() {
     if (!active) return Promise.resolve(null);
 
     // Check capture health before stopping, not while the encoder shuts down.
-    if (!hasLiveCaptureTracks(active.stream)) active.failed = true;
+    if (!hasLiveCaptureTracks(active.stream)) {
+      active.failed = true;
+      active.failureReason = describeCaptureTracks(active.stream);
+    }
     return finishAnswerRecording(active).then((blob) => {
       if (blob) responseBlobsRef.current.set(active.responseKey, blob);
-      else responseBlobsRef.current.delete(active.responseKey);
+      else {
+        responseBlobsRef.current.delete(active.responseKey);
+        recordingFailureRef.current = active.failureReason || "The recording was interrupted before it could finish.";
+      }
       return blob;
     });
   }, []);
@@ -284,10 +302,11 @@ export default function InterviewExperience() {
     const generation = ++playbackGenerationRef.current;
     let cancelled = false;
     let started = false;
+    let played = false;
     const readinessAbort = new AbortController();
     const responseKey = session.stage === "conversation" ? `spoken-${session.questionIndex + 1}` : "walkthrough";
     const beginAnswer = async () => {
-      if (cancelled || started) return;
+      if (cancelled || started || !played || audio.muted || !audio.ended) return;
       started = true;
       await waitForCaptureReady(media.stream, readinessAbort.signal);
       if (cancelled) return;
@@ -306,6 +325,7 @@ export default function InterviewExperience() {
     audio.muted = false;
     const startupTimer = window.setTimeout(fail, 15_000);
     const onPlaying = () => {
+      played = !audio.muted && audio.volume > 0;
       window.clearTimeout(startupTimer);
       if (!cancelled) setAudioError("");
     };
@@ -353,21 +373,19 @@ export default function InterviewExperience() {
         await waitForCaptureReady(stream);
       }
 
-      const responseKey = pendingResponseKeyRef.current
-        || (session.stage === "conversation" ? `spoken-${session.questionIndex + 1}` : "walkthrough");
-      media.clearRecoveredIssue();
-      const result = startAnswerRecorder(responseKey, stream ?? undefined);
-      if (!result.ok) {
-        setCaptureRetryError(result.error);
+      if (!hasLiveCaptureTracks(stream)) {
+        setCaptureRetryError(describeCaptureTracks(stream));
         return;
       }
-
+      media.clearRecoveredIssue();
+      // Always replay the prompt after recovery. Never bypass it to record.
+      dispatch({ type: "answer-reset" });
       setCaptureIssue("");
       setCaptureRetryError("");
     } finally {
       setCaptureRetrying(false);
     }
-  }, [captureRetrying, media, session.questionIndex, session.stage, startAnswerRecorder]);
+  }, [captureRetrying, media]);
 
   useEffect(() => {
     if (!media.integrityIssue || session.answerMode !== "answering") return;
@@ -376,7 +394,6 @@ export default function InterviewExperience() {
 
     active.failed = true;
     active.chunks = [];
-    pendingResponseKeyRef.current = active.responseKey;
     responseBlobsRef.current.delete(active.responseKey);
     void stopAnswerRecorder();
     dispatch({ type: "answer-reset" });
@@ -455,7 +472,7 @@ export default function InterviewExperience() {
       transitioningRef.current = false;
       dispatch({ type: "answer-reset" });
       setCaptureRetryError("");
-      setCaptureIssue(describeRecorderError());
+      setCaptureIssue(recordingFailureRef.current + " Retry capture to replay the question and answer again.");
       return;
     }
     if (session.questionIndex < assessment.questions.length - 1) dispatchWithTransition({ type: "next-question" });
@@ -472,7 +489,7 @@ export default function InterviewExperience() {
       transitioningRef.current = false;
       dispatch({ type: "answer-reset" });
       setCaptureRetryError("");
-      setCaptureIssue(describeRecorderError());
+      setCaptureIssue(recordingFailureRef.current + " Retry capture to replay the question and answer again.");
       return;
     }
     dispatchWithTransition({ type: "complete" });
@@ -604,7 +621,7 @@ export default function InterviewExperience() {
         <IntegrityDialog
           title="Answer capture interrupted"
           issue={captureIssue}
-          guidance="No answer has been saved. Retry capture, then answer the visible question from the beginning and select Done when you finish."
+          guidance="No answer has been saved. Retry capture to hear the question again. Recording starts after Sia finishes speaking; select Done after your answer."
           actionLabel="Retry answer capture"
           busyLabel="Retrying capture…"
           busy={captureRetrying}

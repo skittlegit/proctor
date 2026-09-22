@@ -110,7 +110,6 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
   const requestIdRef = useRef(0);
   const intentionallyStoppedTracksRef = useRef(new WeakSet<MediaStreamTrack>());
   const disposalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const restoreAudioSessionRef = useRef<(() => void) | null>(null);
 
   const stopSessionTracks = useCallback((stream: MediaStream | null) => {
     stream?.getTracks().forEach((track) => {
@@ -123,8 +122,6 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
     requestIdRef.current += 1;
     stopSessionTracks(streamRef.current);
     streamRef.current = null;
-    restoreAudioSessionRef.current?.();
-    restoreAudioSessionRef.current = null;
     dispatch({ type: "stopped" });
   }, [stopSessionTracks]);
 
@@ -151,18 +148,6 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
         streamRef.current = null;
       }
 
-      // Where supported, keep prompt playback and capture in the same iOS
-      // audio session instead of switching microphone routing between them.
-      const audioSession = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
-      if (audioSession && !restoreAudioSessionRef.current) {
-        const previousType = audioSession.type;
-        try {
-          audioSession.type = "play-and-record";
-          restoreAudioSessionRef.current = () => {
-            try { audioSession.type = previousType; } catch { /* optional API */ }
-          };
-        } catch { /* This optional API is not available in every browser. */ }
-      }
       const nextStream = await navigator.mediaDevices.getUserMedia({
         video: requestedCamera ? { deviceId: { exact: requestedCamera } } : true,
         audio: requestedMic ? { deviceId: { exact: requestedMic } } : true,
@@ -208,10 +193,6 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
       stopTracks(pendingStream);
       const message = describeMediaError(error);
       if (requestId !== requestIdRef.current) return { ok: false, error: message };
-      if (!streamRef.current) {
-        restoreAudioSessionRef.current?.();
-        restoreAudioSessionRef.current = null;
-      }
       dispatch({ type: "failed", error: message, stream: streamRef.current });
       return { ok: false, error: message };
     }
@@ -286,8 +267,6 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
       requestIdRef.current += 1;
       stopSessionTracks(streamRef.current);
       streamRef.current = null;
-      restoreAudioSessionRef.current?.();
-      restoreAudioSessionRef.current = null;
     };
     window.addEventListener("pagehide", stopOnExit);
     const onRestore = (event: PageTransitionEvent) => {

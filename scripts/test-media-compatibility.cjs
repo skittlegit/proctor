@@ -80,6 +80,14 @@ async function main() {
     static isTypeSupported(type) { return type === "video/mp4"; }
     constructor(_stream, options) { this.mimeType = options?.mimeType || "default"; }
   };
+  assert.equal(createAnswerRecorder(stream).mimeType, "default");
+  global.MediaRecorder = class {
+    static isTypeSupported(type) { return type === "video/mp4"; }
+    constructor(_stream, options) {
+      if (!options) throw new Error("Default unavailable");
+      this.mimeType = options.mimeType;
+    }
+  };
   assert.equal(createAnswerRecorder(stream).mimeType, "video/mp4");
   global.MediaRecorder.isTypeSupported = (type) => type.startsWith("video/webm");
   assert.equal(createAnswerRecorder(stream).mimeType, "video/webm;codecs=vp8,opus");
@@ -129,9 +137,16 @@ async function main() {
   queued.chunks.push(blob);
   queued.recorder.dispatchEvent(new Event("stop"));
   assert.equal((await queuedResult).size, blob.size);
+  const stopped = capture();
+  stopped.stopped = true;
+  stopped.recorder.state = "inactive";
+  stopped.chunks.push(blob);
+  assert.equal((await finishAnswerRecording(stopped)).size, blob.size);
   const stalled = capture();
   assert.equal(await finishAnswerRecording(stalled, 5), null);
   assert.equal(stalled.failed, true);
+  assert.match(stalled.failureReason, /did not finish/);
+  assert.match(empty.failureReason, /empty recording/);
   stalled.recorder.dispatchEvent(new Event("stop"));
   console.log("Media compatibility checks passed: recovery, cancellation, missing tracks, MP4/WebM negotiation, encoder fallback, and blob type.");
 }
