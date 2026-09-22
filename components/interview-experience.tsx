@@ -120,6 +120,7 @@ type ActiveRecording = {
   failed: boolean;
   stopped?: boolean;
   failureReason?: string;
+  release?: () => void;
 };
 
 type RecorderStartResult =
@@ -238,14 +239,18 @@ export default function InterviewExperience() {
     }
     if (typeof MediaRecorder === "undefined") return { ok: false, error: describeRecorderError() };
 
+    let recordingStream: MediaStream | null = null;
+    const release = () => recordingStream?.getTracks().forEach((track) => track.stop());
     try {
-      const recorder = createAnswerRecorder(stream);
-      const active: ActiveRecording = { recorder, stream, chunks: [], responseKey, failed: false };
+      recordingStream = stream.clone();
+      const recorder = createAnswerRecorder(recordingStream);
+      const active: ActiveRecording = { recorder, stream: recordingStream, chunks: [], responseKey, failed: false, release };
 
       recorder.addEventListener("dataavailable", (event) => {
         if (!active.failed && event.data.size > 0) active.chunks.push(event.data);
       });
       recorder.addEventListener("error", () => {
+        release();
         if (active.failed) return;
         active.failed = true;
         active.chunks = [];
@@ -258,6 +263,7 @@ export default function InterviewExperience() {
 
       recorder.addEventListener("stop", () => {
         active.stopped = true;
+        release();
         if (recorderRef.current !== active) return;
         active.failed = true;
         active.failureReason = "The browser stopped recording before you selected Done.";
@@ -274,6 +280,7 @@ export default function InterviewExperience() {
       dispatch({ type: "answer-started", startedAt: Date.now() });
       return { ok: true };
     } catch (error) {
+      release();
       return { ok: false, error: describeRecorderError(error) };
     }
   }, [media.stream]);
@@ -405,7 +412,7 @@ export default function InterviewExperience() {
   }, [media.integrityIssue, session.answerMode, stopAnswerRecorder]);
 
   useEffect(() => {
-    if (session.stage !== "countdown" || transitionPhase !== "idle") return;
+    if (session.stage !== "countdown") return;
     // Schedule each number after its render instead of deriving it from a
     // deadline: a delayed mobile frame must not jump from 3 straight to 1.
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -423,7 +430,7 @@ export default function InterviewExperience() {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", schedule);
     };
-  }, [countdown, dispatchWithTransition, session.stage, transitionPhase]);
+  }, [countdown, dispatchWithTransition, session.stage]);
 
   useEffect(() => {
     try {

@@ -305,6 +305,9 @@ function ThemeToggle() {
   function toggleTheme() {
     const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = nextTheme;
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute(
+      "content", nextTheme === "dark" ? "#111210" : "#f4f4f1",
+    );
   }
 
   return (

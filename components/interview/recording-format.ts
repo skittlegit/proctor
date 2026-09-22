@@ -26,7 +26,7 @@ export function recordedBlob(chunks: Blob[], recorderMimeType: string): Blob {
 }
 
 export function finishAnswerRecording(
-  active: { recorder: MediaRecorder; chunks: Blob[]; failed: boolean; stopped?: boolean; failureReason?: string },
+  active: { recorder: MediaRecorder; chunks: Blob[]; failed: boolean; stopped?: boolean; failureReason?: string; release?: () => void },
 ): Promise<Blob | null> {
   return new Promise((resolve) => {
     let settled = false;
@@ -36,6 +36,7 @@ export function finishAnswerRecording(
       active.recorder.removeEventListener("stop", finalize);
       active.recorder.removeEventListener("error", fail);
       active.chunks = [];
+      active.release?.();
       resolve(blob);
     };
     const fail = () => {
@@ -58,6 +59,9 @@ export function finishAnswerRecording(
       // An unexpectedly inactive recorder may still have its final events
       // queued. Wait for stop instead of saving incomplete chunks.
       if (active.recorder.state !== "inactive") active.recorder.stop();
+      // End only the recorder-owned clones. This supplies an explicit end of
+      // input while the shared preview/device-monitoring stream stays live.
+      active.release?.();
     } catch {
       fail();
     }

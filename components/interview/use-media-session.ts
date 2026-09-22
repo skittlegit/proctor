@@ -234,12 +234,10 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
     const audioTracks = stream.getAudioTracks();
 
     videoTracks.forEach((track) => {
-      track.enabled = true;
       track.addEventListener("ended", onVideoLost);
       track.addEventListener("mute", onVideoLost);
     });
     audioTracks.forEach((track) => {
-      track.enabled = true;
       track.addEventListener("ended", onAudioLost);
       track.addEventListener("mute", onAudioLost);
     });

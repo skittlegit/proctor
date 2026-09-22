@@ -141,6 +141,20 @@ async function main() {
   const completeWebM = await streamedResult;
   assert.equal(await completeWebM.text(), "first-last");
   assert.equal(completeWebM.type, "video/webm");
+  const owned = capture();
+  const previewTrack = new Track();
+  const recordingTrack = new Track();
+  owned.release = () => {
+    assert.equal(owned.recorder.state, "inactive");
+    recordingTrack.readyState = "ended";
+  };
+  const ownedResult = finishAnswerRecording(owned);
+  assert.equal(recordingTrack.readyState, "ended");
+  assert.equal(previewTrack.readyState, "live");
+  // Final encoded data can arrive after the recorder's input was released.
+  owned.chunks.push(blob);
+  owned.recorder.dispatchEvent(new Event("stop"));
+  assert.equal((await ownedResult).size, blob.size);
   const empty = capture();
   const emptyResult = finishAnswerRecording(empty);
   empty.recorder.dispatchEvent(new Event("stop"));
