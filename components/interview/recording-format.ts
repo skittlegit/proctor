@@ -1,18 +1,16 @@
 // Probe formats rather than inferring support from a browser name. Older
 // Safari records MP4; Chromium commonly records WebM.
 export function createAnswerRecorder(stream: MediaStream): MediaRecorder {
-  // Let the browser choose its native encoder before trying explicit formats.
-  try { return new MediaRecorder(stream); } catch { /* Try supported alternatives. */ }
+  // Prefer WebM where advertised, including newer Safari. The default iOS
+  // encoder has stalled during finalization in device testing of this app.
   const formats = [
-    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-    "video/mp4",
     "video/webm;codecs=vp8,opus",
-    "video/webm;codecs=vp9,opus",
     "video/webm",
+    "video/mp4",
   ];
   for (const mimeType of formats) {
     try {
-      if (typeof MediaRecorder.isTypeSupported === "function" && !MediaRecorder.isTypeSupported(mimeType)) continue;
+      if (typeof MediaRecorder.isTypeSupported !== "function" || !MediaRecorder.isTypeSupported(mimeType)) continue;
       return new MediaRecorder(stream, { mimeType });
     } catch {
       // An advertised encoder can still be unavailable on the current device.
@@ -56,7 +54,8 @@ export function finishAnswerRecording(
       settle(blob.size > 0 ? blob : null);
     };
     const timeout = setTimeout(() => {
-      active.failureReason = "The browser encoder did not finish the recording.";
+      const bytes = active.chunks.reduce((total, chunk) => total + chunk.size, 0);
+      active.failureReason = `The browser encoder did not finish the recording (${active.recorder.mimeType || "default format"}; ${bytes} bytes received).`;
       fail();
     }, timeoutMs);
     active.recorder.addEventListener("stop", finalize);

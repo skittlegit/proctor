@@ -80,7 +80,7 @@ async function main() {
     static isTypeSupported(type) { return type === "video/mp4"; }
     constructor(_stream, options) { this.mimeType = options?.mimeType || "default"; }
   };
-  assert.equal(createAnswerRecorder(stream).mimeType, "default");
+  assert.equal(createAnswerRecorder(stream).mimeType, "video/mp4");
   global.MediaRecorder = class {
     static isTypeSupported(type) { return type === "video/mp4"; }
     constructor(_stream, options) {
@@ -99,6 +99,19 @@ async function main() {
     }
   };
   assert.equal(createAnswerRecorder(stream).mimeType, "default");
+  global.MediaRecorder = class {
+    static isTypeSupported() { return true; }
+    constructor(_stream, options) { this.mimeType = options?.mimeType || "default"; }
+  };
+  assert.equal(createAnswerRecorder(stream).mimeType, "video/webm;codecs=vp8,opus");
+  global.MediaRecorder = class {
+    static isTypeSupported() { return true; }
+    constructor(_stream, options) {
+      if (options?.mimeType.startsWith("video/webm")) throw new Error("WebM unavailable");
+      this.mimeType = options?.mimeType || "default";
+    }
+  };
+  assert.equal(createAnswerRecorder(stream).mimeType, "video/mp4");
   const blob = recordedBlob([new Blob(["capture"], { type: "video/mp4" })], "");
   assert.equal(blob.type, "video/mp4");
   assert.equal(blob.size, 7);
@@ -116,6 +129,18 @@ async function main() {
   active.recorder.dispatchEvent(new Event("stop"));
   assert.equal(await (await finishing).text(), "final MP4");
   assert.deepEqual(active.chunks, []);
+  const streamed = capture();
+  streamed.recorder.mimeType = "video/webm";
+  streamed.chunks.push(new Blob(["first-"]));
+  let savedEarly = false;
+  const streamedResult = finishAnswerRecording(streamed).then(result => { savedEarly = true; return result; });
+  await Promise.resolve();
+  assert.equal(savedEarly, false);
+  streamed.chunks.push(new Blob(["last"]));
+  streamed.recorder.dispatchEvent(new Event("stop"));
+  const completeWebM = await streamedResult;
+  assert.equal(await completeWebM.text(), "first-last");
+  assert.equal(completeWebM.type, "video/webm");
   const empty = capture();
   const emptyResult = finishAnswerRecording(empty);
   empty.recorder.dispatchEvent(new Event("stop"));

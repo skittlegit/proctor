@@ -263,8 +263,9 @@ export default function InterviewExperience() {
         dispatch({ type: "answer-reset" });
         setCaptureIssue(active.failureReason + " Retry capture to replay the question.");
       });
-      // Collect the complete clip on stop; avoid forcing frequent MP4 fragments.
-      recorder.start();
+      // Drain encoded data throughout the answer instead of buffering the
+      // entire clip until Done. Still wait for stop to preserve the final data.
+      recorder.start(1000);
       recorderRef.current = active;
       setCaptureIssue("");
       setCaptureRetryError("");
