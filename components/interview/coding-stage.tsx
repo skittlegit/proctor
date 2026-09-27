@@ -107,7 +107,7 @@ export default function CodingStage({
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-line bg-surface-soft p-3">
-            <CandidatePreview stream={stream} className="w-48 max-w-full shrink-0" />
+            <CandidatePreview stream={stream} label={withoutMedia ? "Camera off" : "You"} className="w-48 max-w-full shrink-0" />
             <div className="min-w-0 flex-1 basis-28 text-xs">
               <p className="font-semibold text-ink-soft">Your session</p>
               <p className="mt-2 leading-5 text-muted">Keep your face in view.</p>

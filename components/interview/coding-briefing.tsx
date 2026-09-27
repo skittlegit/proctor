@@ -79,14 +79,14 @@ export function CodingBriefing({
             </div>
             <details className="mt-4 text-sm text-muted">
               <summary className="w-fit cursor-pointer rounded py-1 outline-none focus-visible:ring-2 focus-visible:ring-brand">Read Sia&apos;s transcript</summary>
-              <p className="mt-3 leading-6">{withoutMedia ? transcript.replace("Keep your camera and microphone connected.", "You will type your final explanation without camera or microphone.") : transcript}</p>
+              <p className="mt-3 leading-6">{withoutMedia ? transcript.replace("Keep your camera and microphone connected.", "") : transcript}</p>
             </details>
             <div className="mt-auto pt-6">
               <div className="flex flex-wrap items-center gap-4 border-t border-line pt-5">
-                <CandidatePreview stream={stream} className="w-40 max-w-full shrink-0 min-[1920px]:w-48" />
+                <CandidatePreview stream={stream} label={withoutMedia ? "Camera off" : "You"} className="w-40 max-w-full shrink-0 min-[1920px]:w-48" />
                 <div className="min-w-0 flex-1 basis-32 text-xs leading-5 text-muted min-[1920px]:text-sm">
                   <p className="font-semibold text-ink-soft">Your session</p>
-                  <p className="mt-1">{withoutMedia ? "Camera and microphone are off." : "Keep your camera and microphone connected."}</p>
+                  <p className="mt-1">{withoutMedia ? "Continue when you're ready." : "Keep your camera and microphone connected."}</p>
                 </div>
               </div>
             </div>

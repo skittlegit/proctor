@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 
 import { codeLanguages, formatTime, type AnswerMode, type CodeLanguage } from "./config";
 import { AIOrb, AnswerStatus, AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
-import { TypedAnswer } from "./typed-answer";
 
 export default function ExplanationStage({
   code,
@@ -20,8 +19,6 @@ export default function ExplanationStage({
   sessionElapsed,
   stream,
   withoutMedia,
-  typedAnswer,
-  onTypedAnswerChange,
   onFinish,
 }: {
   code: string;
@@ -31,8 +28,6 @@ export default function ExplanationStage({
   sessionElapsed: number;
   stream: MediaStream | null;
   withoutMedia: boolean;
-  typedAnswer: string;
-  onTypedAnswerChange: (value: string) => void;
   onFinish: () => void;
 }) {
   const orbState = answerMode === "asking" ? "speaking" : answerMode === "answering" ? "listening" : "thinking";
@@ -55,8 +50,8 @@ export default function ExplanationStage({
                 </div>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-line bg-surface-soft p-3">
-                <CandidatePreview stream={stream} className="w-48 max-w-full shrink-0" />
-                <div className="min-w-0 flex-1 basis-28"><p className="text-xs font-semibold">Your interview session</p><p className="mt-1 text-xs leading-5 text-muted">{withoutMedia ? "Type your walkthrough below." : "Keep your camera and microphone connected."}</p></div>
+                <CandidatePreview stream={stream} label={withoutMedia ? "Camera off" : "You"} className="w-48 max-w-full shrink-0" />
+                <div className="min-w-0 flex-1 basis-28"><p className="text-xs font-semibold">Your interview session</p><p className="mt-1 text-xs leading-5 text-muted">{withoutMedia ? "Continue when you're ready." : "Keep your camera and microphone connected."}</p></div>
               </div>
             </section>
 
@@ -71,7 +66,7 @@ export default function ExplanationStage({
                 <span>{languageConfig.label}</span>
               </div>
           <div className="shrink-0 border-t border-line">
-            {withoutMedia ? <TypedAnswer value={typedAnswer} onChange={onTypedAnswerChange} onDone={onFinish} doneLabel="Finish interview" /> : <AnswerStatus mode={answerMode} elapsed={answerElapsed} onDone={onFinish} doneLabel="Finish interview" />}
+            <AnswerStatus mode={answerMode} elapsed={answerElapsed} onDone={onFinish} doneLabel="Finish interview" />
           </div>
             </section>
       </AssessmentFrame>

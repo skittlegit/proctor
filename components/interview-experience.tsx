@@ -199,21 +199,7 @@ export default function InterviewExperience() {
   const desktopOnlyStage = session.stage === "coding" || session.stage === "explanation";
   const skipDesktopStages = mobileScreen && desktopOnlyStage;
   const [captureIssue, setCaptureIssue] = useState("");
-  const [allowWithoutMedia, setAllowWithoutMedia] = useState(false);
   const [withoutMedia, setWithoutMedia] = useState(false);
-  const [typedAnswer, setTypedAnswer] = useState("");
-  const typedAnswersRef = useRef<Map<string, string>>(new Map());
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/assessment-settings", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Settings unavailable");
-        return response.json() as Promise<{ allowWithoutMedia: boolean }>;
-      })
-      .then((settings) => { if (!cancelled) setAllowWithoutMedia(settings.allowWithoutMedia); })
-      .catch(() => { if (!cancelled) setAllowWithoutMedia(false); });
-    return () => { cancelled = true; };
-  }, []);
   const [captureRetryError, setCaptureRetryError] = useState("");
   const [captureRetrying, setCaptureRetrying] = useState(false);
   const assessmentActive = ["countdown", "conversation", "coding", "explanation"].includes(session.stage);
@@ -251,7 +237,7 @@ export default function InterviewExperience() {
   const answerElapsed = session.answerStartedAt ? Math.max(0, Math.floor((now - session.answerStartedAt) / 1000)) : 0;
   const sessionElapsed = session.assessmentStartedAt ? Math.max(0, Math.floor((now - session.assessmentStartedAt) / 1000)) : 0;
 
-  const promptAudioSrc = skipDesktopStages || withoutMedia ? null : session.stage === "conversation"
+  const promptAudioSrc = skipDesktopStages ? null : session.stage === "conversation"
     ? assessment.questions[session.questionIndex].audio
     : session.stage === "explanation" ? "/audio/sia/walkthrough.mp3" : null;
 
@@ -345,11 +331,6 @@ export default function InterviewExperience() {
   }, [skipDesktopStages, stopAnswerRecorder]);
 
   useEffect(() => {
-    if (!withoutMedia || (session.stage !== "conversation" && session.stage !== "explanation") || session.answerMode !== "asking") return;
-    dispatch({ type: "answer-started", startedAt: Date.now() });
-  }, [withoutMedia, session.stage, session.questionIndex, session.answerMode]);
-
-  useEffect(() => {
     if (!promptAudioSrc || session.answerMode !== "asking" || captureIssue || media.integrityIssue) return;
     const audio = promptAudioRef.current;
     if (!audio) return;
@@ -362,6 +343,10 @@ export default function InterviewExperience() {
     const beginAnswer = async () => {
       if (cancelled || started || !played || audio.muted || !audio.ended) return;
       started = true;
+      if (withoutMedia) {
+        dispatch({ type: "answer-started", startedAt: Date.now() });
+        return;
+      }
       await waitForCaptureReady(media.stream, readinessAbort.signal);
       if (cancelled) return;
       const result = startAnswerRecorder(responseKey);
@@ -398,7 +383,7 @@ export default function InterviewExperience() {
       audio.removeEventListener("error", fail);
       audio.pause();
     };
-  }, [promptAudioSrc, captureIssue, media.integrityIssue, media.stream, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder]);
+  }, [promptAudioSrc, captureIssue, media.integrityIssue, media.stream, session.answerMode, session.questionIndex, session.stage, startAnswerRecorder, withoutMedia]);
 
   const retryPromptAudio = () => {
     const audio = promptAudioRef.current;
@@ -533,10 +518,8 @@ export default function InterviewExperience() {
 
   const finishConversationAnswer = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
-    if (withoutMedia && !typedAnswer.trim()) return;
     transitioningRef.current = true;
     dispatch({ type: "answer-saving" });
-    if (withoutMedia) typedAnswersRef.current.set(`spoken-${session.questionIndex + 1}`, typedAnswer.trim());
     const response = withoutMedia ? true : await stopAnswerRecorder();
     if (!response) {
       transitioningRef.current = false;
@@ -545,21 +528,18 @@ export default function InterviewExperience() {
       setCaptureIssue(recordingFailureRef.current + " Retry capture to replay the question and answer again.");
       return;
     }
-    setTypedAnswer("");
     if (session.questionIndex < assessment.questions.length - 1) dispatch({ type: "next-question" });
     else if (mobileScreen) {
       dispatch({ type: "complete" });
       try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
     } else dispatch({ type: "begin-coding" });
 
-  }, [dispatch, mobileScreen, session.answerMode, session.questionIndex, stopAnswerRecorder, typedAnswer, withoutMedia]);
+  }, [dispatch, mobileScreen, session.answerMode, session.questionIndex, stopAnswerRecorder, withoutMedia]);
 
   const finishInterview = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
-    if (withoutMedia && !typedAnswer.trim()) return;
     transitioningRef.current = true;
     dispatch({ type: "answer-saving" });
-    if (withoutMedia) typedAnswersRef.current.set("walkthrough", typedAnswer.trim());
     const response = withoutMedia ? true : await stopAnswerRecorder();
     if (!response) {
       transitioningRef.current = false;
@@ -570,7 +550,7 @@ export default function InterviewExperience() {
     }
     dispatch({ type: "complete" });
     try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
-  }, [dispatch, session.answerMode, stopAnswerRecorder, typedAnswer, withoutMedia]);
+  }, [dispatch, session.answerMode, stopAnswerRecorder, withoutMedia]);
 
   useEffect(() => {
     if (session.stage === "complete") stopMedia();
@@ -588,7 +568,7 @@ export default function InterviewExperience() {
     if (session.stage === "setup" && media.status === "ready") return "Camera and microphone are ready.";
     if (session.stage === "setup" && media.status === "unavailable") return media.error;
 
-    if (session.answerMode === "saving") return "Finishing your recording. Please wait.";
+    if (session.answerMode === "saving") return withoutMedia ? "Continuing the interview." : "Finishing your recording. Please wait.";
 
     switch (session.stage) {
       case "welcome":
@@ -599,14 +579,14 @@ export default function InterviewExperience() {
         return `Interview begins in ${countdown}.`;
       case "conversation":
         if (session.answerMode === "asking") return `Question ${session.questionIndex + 1}. Sia is asking the question.`;
-        if (session.answerMode === "answering") return `Answer capture started for question ${session.questionIndex + 1}.`;
-        return `Answer ${session.questionIndex + 1} captured.`;
+        if (session.answerMode === "answering") return withoutMedia ? `Question ${session.questionIndex + 1} in progress.` : `Answer capture started for question ${session.questionIndex + 1}.`;
+        return withoutMedia ? `Question ${session.questionIndex + 1} complete.` : `Answer ${session.questionIndex + 1} captured.`;
       case "coding":
         return "Coding section ready.";
       case "explanation":
         if (session.answerMode === "asking") return "Sia is asking for your code explanation.";
-        if (session.answerMode === "answering") return "Code explanation capture started.";
-        return "Code explanation captured.";
+        if (session.answerMode === "answering") return withoutMedia ? "Code explanation in progress." : "Code explanation capture started.";
+        return withoutMedia ? "Code explanation complete." : "Code explanation captured.";
       case "complete":
         return "Interview finished.";
     }
@@ -646,7 +626,6 @@ export default function InterviewExperience() {
                 onCameraChange={media.changeCamera}
                 onMicChange={media.changeMic}
                 onRequestMedia={() => void media.request()}
-                allowWithoutMedia={allowWithoutMedia || media.status === "unavailable"}
                 withoutMedia={withoutMedia}
                 onWithoutMediaChange={(checked) => { setWithoutMedia(checked); if (checked) media.stop(); }}
                 onBack={goBack}
@@ -665,8 +644,6 @@ export default function InterviewExperience() {
                 sessionElapsed={sessionElapsed}
                 stream={media.stream}
                 withoutMedia={withoutMedia}
-                typedAnswer={typedAnswer}
-                onTypedAnswerChange={setTypedAnswer}
                 onFinishAnswer={finishConversationAnswer}
               />
             )}
@@ -691,8 +668,6 @@ export default function InterviewExperience() {
                 sessionElapsed={sessionElapsed}
                 stream={media.stream}
                 withoutMedia={withoutMedia}
-                typedAnswer={typedAnswer}
-                onTypedAnswerChange={setTypedAnswer}
                 onFinish={finishInterview}
               />
             )}
@@ -725,7 +700,7 @@ export default function InterviewExperience() {
         <IntegrityDialog
           title="Play Sia's question"
           issue={audioError}
-          guidance="Your answer recording will begin after the question finishes playing."
+          guidance={withoutMedia ? "Your response timer will begin after the question finishes playing." : "Your answer recording will begin after the question finishes playing."}
           actionLabel="Play question"
           onReconnect={retryPromptAudio}
         />
