@@ -256,9 +256,11 @@ export function SecureHeader({
 export function RoomHeader({
   label,
   detail,
+  withoutMedia = false,
 }: {
   label: string;
   detail: string;
+  withoutMedia?: boolean;
 }) {
   return (
     <header
@@ -273,27 +275,19 @@ export function RoomHeader({
           <span className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-soft px-2.5 py-1.5 font-medium text-muted">
             <Clock3 className="size-3.5" /> {detail}
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-danger" /> Proctoring active
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Camera className="size-3.5 text-brand" /> Camera
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Mic className="size-3.5 text-brand" /> Mic
-          </span>
+          {withoutMedia ? <span>Text response mode</span> : <><span className="flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-danger" /> Proctoring active</span><span className="flex items-center gap-1.5"><Camera className="size-3.5 text-brand" /> Camera</span><span className="flex items-center gap-1.5"><Mic className="size-3.5 text-brand" /> Mic</span></>}
         </div>
         <div className="flex items-center gap-3 text-xs font-semibold text-ink-soft lg:hidden">
           <span className="hidden items-center gap-1.5 text-muted sm:flex">
             <Clock3 className="size-3.5" /> {detail}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-danger" /> Live
+            <span className={withoutMedia ? "size-1.5 rounded-full bg-muted" : "size-1.5 rounded-full bg-danger"} /> {withoutMedia ? "Text mode" : "Live"}
           </span>
-          <span className="hidden items-center gap-2 md:flex" aria-label="Camera and microphone on">
+          {!withoutMedia && <span className="hidden items-center gap-2 md:flex" aria-label="Camera and microphone on">
             <Camera className="size-3.5" />
             <Mic className="size-3.5" />
-          </span>
+          </span>}
         </div>
         <ThemeToggle />
       </div>

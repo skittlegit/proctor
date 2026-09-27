@@ -169,12 +169,19 @@ export function useMediaSession(assessmentActive: boolean, recordingActive = fal
       // Mount/play the preview before waiting for camera frames. Some iOS
       // capture pipelines don't unmute video until it has a playing consumer.
       dispatch({ type: "preview", stream: nextStream });
+      // Permissions have been granted, so expose labeled devices even if the
+      // default input remains muted. This lets the candidate choose another mic.
+      const availableDevices = await navigator.mediaDevices.enumerateDevices().catch(() => [] as MediaDeviceInfo[]);
+      if (requestId !== requestIdRef.current) {
+        stopTracks(nextStream);
+        return { ok: false, error: "A newer device check replaced this request." };
+      }
+      dispatch({ type: "devices", devices: availableDevices });
       if (!await waitForCaptureReady(nextStream)) {
         const device = audioTrack.muted ? "microphone" : "camera";
-        throw new Error(`Your ${device} is connected, but the browser is not receiving media from it. Check its hardware mute/privacy switch and your system input settings, then check the devices again.`);
+        throw new Error(`Your ${device} is connected, but the browser is not receiving media from it. Check this site's ${device} permission, the selected input device, and any hardware mute/privacy switch, then check the devices again.`);
       }
 
-      const availableDevices = await navigator.mediaDevices.enumerateDevices();
       if (requestId !== requestIdRef.current) {
         stopTracks(nextStream);
         return { ok: false, error: "A newer device check replaced this request." };

@@ -1,4 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a Next.js interview prototype with a shared admin setting backed by Supabase Postgres.
+
+## Admin setup
+
+1. Create a Supabase project and run [supabase/schema.sql](supabase/schema.sql) in its SQL editor.
+2. Copy `.env.example` to `.env.local`. Set `SUPABASE_URL` to the project URL, `SUPABASE_SERVICE_ROLE_KEY` to its server-side service role key, and `ADMIN_PASSWORD` to a strong password. Set the same variables in your deployment environment.
+3. Start the app and open `/admin`. Sign in with the admin password and switch on **Allow continuation without camera and microphone**. New candidate visits read this shared setting from the server.
+
+The service role key stays on the server. Keep `.env.local` private. The admin password is held in page memory for the current tab and sent to the app API over HTTPS; it is not saved in browser storage. This prototype does not yet persist candidate recordings or typed answers as submissions.
 
 ## Getting Started
 

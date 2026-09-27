@@ -31,13 +31,14 @@ function getServerTheme(): ColorTheme {
 }
 
 export default function CodingStage({
-  code, language, sessionElapsed, stream,
+  code, language, sessionElapsed, stream, withoutMedia,
   onCodeChange, onLanguageChange, onSubmit,
 }: {
   code: string;
   language: CodeLanguage;
   sessionElapsed: number;
   stream: MediaStream | null;
+  withoutMedia: boolean;
   onCodeChange: (code: string) => void;
   onLanguageChange: (language: CodeLanguage) => void;
   onSubmit: () => void;
@@ -55,12 +56,12 @@ export default function CodingStage({
     : mainTheme;
 
   if (showBriefing) {
-    return <CodingBriefing sessionElapsed={sessionElapsed} stream={stream} onContinue={() => setShowBriefing(false)} />;
+    return <CodingBriefing sessionElapsed={sessionElapsed} stream={stream} withoutMedia={withoutMedia} onContinue={() => setShowBriefing(false)} />;
   }
 
   return (
     <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
-      <RoomHeader label="Coding exercise" detail={`${formatTime(sessionElapsed)} elapsed`} />
+      <RoomHeader label="Coding exercise" detail={`${formatTime(sessionElapsed)} elapsed`} withoutMedia={withoutMedia} />
       <AssessmentFrame className="md:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.2fr)] lg:grid-cols-[minmax(20rem,0.7fr)_minmax(0,1.3fr)]">
         <section aria-labelledby="challenge-title" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full">
           <div className="min-h-0 flex-1 overflow-y-auto">

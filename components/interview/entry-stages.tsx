@@ -150,6 +150,9 @@ export function SetupStage({
   onCameraChange,
   onMicChange,
   onRequestMedia,
+  allowWithoutMedia,
+  withoutMedia,
+  onWithoutMediaChange,
   onBack,
   onStart,
 }: {
@@ -164,6 +167,9 @@ export function SetupStage({
   onCameraChange: (id: string) => void;
   onMicChange: (id: string) => void;
   onRequestMedia: () => void;
+  allowWithoutMedia: boolean;
+  withoutMedia: boolean;
+  onWithoutMediaChange: (checked: boolean) => void;
   onBack: () => void;
   onStart: () => void;
 }) {
@@ -173,7 +179,7 @@ export function SetupStage({
   const audioDevices = devices.filter(
     (device) => device.kind === "audioinput",
   );
-  const canStart = consent && mediaStatus === "ready" && Boolean(stream);
+  const canStart = consent && (withoutMedia || (mediaStatus === "ready" && Boolean(stream)));
 
   return (
     <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
@@ -205,7 +211,7 @@ export function SetupStage({
           <section
             className="monitor-setup-preview relative min-h-[220px] min-w-0 max-w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-editor sm:aspect-video sm:min-h-0 md:aspect-auto md:h-full"
             aria-label="Camera preview"
-            aria-busy={mediaStatus === "requesting"}
+            aria-busy={!withoutMedia && mediaStatus === "requesting"}
           >
             <CandidatePreview
               stream={stream}
@@ -215,7 +221,7 @@ export function SetupStage({
             <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/45 px-2.5 py-1.5 text-[11px] font-semibold text-white backdrop-blur-md sm:left-4 sm:top-4">
               <LockKeyhole className="size-3" /> Preview only
             </div>
-            {mediaStatus !== "ready" && (
+            {(withoutMedia || mediaStatus !== "ready") && (
               <div className="absolute inset-0 grid place-items-center bg-editor/85 p-6 text-center backdrop-blur-sm">
                 <div
                   className="max-w-sm"
@@ -227,14 +233,14 @@ export function SetupStage({
                     <Camera className="size-4 sm:size-5" />
                   </div>
                   <h2 className="mt-3 text-base font-semibold text-white sm:mt-4 sm:text-lg">
-                    {mediaStatus === "requesting"
+                    {withoutMedia ? "Text response mode" : mediaStatus === "requesting"
                       ? "Waiting for browser permission…"
                       : mediaStatus === "unavailable"
-                        ? "Camera and microphone required"
+                        ? mediaError.toLowerCase().includes("microphone") ? "Microphone is not ready" : mediaError.toLowerCase().includes("camera") ? "Camera is not ready" : "Camera and microphone required"
                         : "Allow camera and microphone"}
                   </h2>
                   <p className="mx-auto mt-1.5 max-w-xs text-xs leading-5 text-white/70 sm:mt-2 sm:text-sm sm:leading-6">
-                    {mediaStatus === "unavailable"
+                    {withoutMedia ? "Camera and microphone are off. You will type your answers." : mediaStatus === "unavailable"
                       ? mediaError
                       : "Both devices must be connected before this assessment can begin."}
                   </p>
@@ -255,12 +261,12 @@ export function SetupStage({
                 <Settings2 className="size-4 text-ink-soft" /> Devices
               </h2>
               <p className="mt-1 text-xs leading-5 text-muted">
-                These remain active for the full assessment.
+                {withoutMedia ? "You will answer in text without recording." : "These remain active for the full assessment."}
               </p>
             </header>
 
             <div className="monitor-setup-options flex min-h-0 flex-1 flex-col divide-y divide-line">
-              <DeviceSelect
+              {!withoutMedia && <DeviceSelect
                 icon={Camera}
                 label="Camera"
                 status={mediaStatus === "ready" ? "Ready" : "Required"}
@@ -268,8 +274,8 @@ export function SetupStage({
                 onChange={onCameraChange}
                 devices={videoDevices}
                 fallback="Default camera"
-              />
-              <DeviceSelect
+              />}
+              {!withoutMedia && <DeviceSelect
                 icon={Mic}
                 label="Microphone"
                 status={mediaStatus === "ready" ? "Connected" : "Required"}
@@ -277,7 +283,8 @@ export function SetupStage({
                 onChange={onMicChange}
                 devices={audioDevices}
                 fallback="Default microphone"
-              />
+              />}
+              {allowWithoutMedia && <label className="monitor-setup-control flex cursor-pointer items-center justify-between gap-4 px-4 py-3.5 sm:px-5"><span className="text-xs font-semibold text-ink-soft">Continue without camera and microphone</span><input type="checkbox" role="switch" checked={withoutMedia} onChange={(event) => onWithoutMediaChange(event.target.checked)} className="size-5 shrink-0 accent-ink" /></label>}
               <div className="monitor-setup-control flex items-center justify-between px-4 py-3.5 sm:px-5">
                 <span className="flex items-center gap-2 text-xs font-semibold text-ink-soft">
                   <Wifi className="size-4 text-ink-soft" /> Browser connection
@@ -295,11 +302,10 @@ export function SetupStage({
                   className="mt-0.5 size-4 shrink-0 accent-ink outline-none focus-visible:ring-2 focus-visible:ring-ink/25 focus-visible:ring-offset-2"
                 />
                 <span className="text-xs leading-5 text-muted">
-                  I understand that video, audio, transcript, and code activity
-                  remain recorded for this assessment.
+                  {withoutMedia ? "I understand my answers will be typed, with no video or audio recording." : "I understand that video, audio, transcript, and code activity remain recorded for this assessment."}
                 </span>
               </label>
-              {mediaStatus === "unavailable" && mediaError && (
+              {!withoutMedia && mediaStatus === "unavailable" && mediaError && (
                 <p
                   className="px-4 py-3 text-xs leading-5 text-danger sm:px-5"
                   role="alert"
@@ -308,7 +314,7 @@ export function SetupStage({
                 </p>
               )}
               <div className="mobile-action-bar mt-auto bg-surface px-4 py-4 sm:px-5">
-                {mediaStatus === "ready" ? (
+                {withoutMedia || mediaStatus === "ready" ? (
                   <Button
                     className="mx-auto h-11 w-full max-w-md"
                     onClick={onStart}

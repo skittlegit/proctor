@@ -6,7 +6,7 @@ export function hasConnectedCaptureTracks(stream: MediaStream | null | undefined
 // A live track can briefly be muted while iOS switches from prompt playback
 // to microphone capture. Resolve immediately when ready, or on unmute; never
 // treat an ended/disabled track as usable and never record missing media.
-export function waitForCaptureReady(stream: MediaStream | null | undefined, signal?: AbortSignal, timeoutMs = 1500): Promise<boolean> {
+export function waitForCaptureReady(stream: MediaStream | null | undefined, signal?: AbortSignal, timeoutMs = 6000): Promise<boolean> {
   if (!hasConnectedCaptureTracks(stream) || signal?.aborted) return Promise.resolve(false);
   const tracks = [stream.getVideoTracks()[0], stream.getAudioTracks()[0]];
   if (tracks.every((track) => !track.muted)) return Promise.resolve(true);

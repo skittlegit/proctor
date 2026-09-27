@@ -25,10 +25,11 @@ const instructions = [
 const transcript = "Now, let's move on to the coding exercise. You'll work on one challenge, then talk me through your solution. Start by reading the problem, examples, and constraints. Choose the language you're most comfortable with, and build your solution in the editor. Your draft is saved in this browser as you work. Before you submit, check your reasoning against the examples and consider edge cases. Once you select Submit solution, your code will be read only. I'll then ask you to explain your approach and one tradeoff you made. Keep your camera and microphone connected. When you're ready, select Start coding.";
 
 export function CodingBriefing({
-  sessionElapsed, stream, onContinue,
+  sessionElapsed, stream, withoutMedia, onContinue,
 }: {
   sessionElapsed: number;
   stream: MediaStream | null;
+  withoutMedia: boolean;
   onContinue: () => void;
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -58,7 +59,7 @@ export function CodingBriefing({
 
   return (
     <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
-      <RoomHeader label="Coding briefing" detail={`${formatTime(sessionElapsed)} elapsed`} />
+      <RoomHeader label="Coding briefing" detail={`${formatTime(sessionElapsed)} elapsed`} withoutMedia={withoutMedia} />
       <AssessmentContent className="items-start overflow-y-auto">
         <section aria-labelledby="coding-briefing-title" className="my-auto grid w-full shrink-0 overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
           <div className="flex min-w-0 flex-col border-b border-line bg-surface-soft/45 p-6 lg:border-r lg:border-b-0 lg:p-8 min-[1920px]:p-12">
@@ -78,14 +79,14 @@ export function CodingBriefing({
             </div>
             <details className="mt-4 text-sm text-muted">
               <summary className="w-fit cursor-pointer rounded py-1 outline-none focus-visible:ring-2 focus-visible:ring-brand">Read Sia&apos;s transcript</summary>
-              <p className="mt-3 leading-6">{transcript}</p>
+              <p className="mt-3 leading-6">{withoutMedia ? transcript.replace("Keep your camera and microphone connected.", "You will type your final explanation without camera or microphone.") : transcript}</p>
             </details>
             <div className="mt-auto pt-6">
               <div className="flex flex-wrap items-center gap-4 border-t border-line pt-5">
                 <CandidatePreview stream={stream} className="w-40 max-w-full shrink-0 min-[1920px]:w-48" />
                 <div className="min-w-0 flex-1 basis-32 text-xs leading-5 text-muted min-[1920px]:text-sm">
                   <p className="font-semibold text-ink-soft">Your session</p>
-                  <p className="mt-1">Keep your camera and microphone connected.</p>
+                  <p className="mt-1">{withoutMedia ? "Camera and microphone are off." : "Keep your camera and microphone connected."}</p>
                 </div>
               </div>
             </div>

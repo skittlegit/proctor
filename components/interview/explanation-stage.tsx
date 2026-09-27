@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { codeLanguages, formatTime, type AnswerMode, type CodeLanguage } from "./config";
 import { AIOrb, AnswerStatus, AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
+import { TypedAnswer } from "./typed-answer";
 
 export default function ExplanationStage({
   code,
@@ -18,6 +19,9 @@ export default function ExplanationStage({
   answerElapsed,
   sessionElapsed,
   stream,
+  withoutMedia,
+  typedAnswer,
+  onTypedAnswerChange,
   onFinish,
 }: {
   code: string;
@@ -26,6 +30,9 @@ export default function ExplanationStage({
   answerElapsed: number;
   sessionElapsed: number;
   stream: MediaStream | null;
+  withoutMedia: boolean;
+  typedAnswer: string;
+  onTypedAnswerChange: (value: string) => void;
   onFinish: () => void;
 }) {
   const orbState = answerMode === "asking" ? "speaking" : answerMode === "answering" ? "listening" : "thinking";
@@ -33,7 +40,7 @@ export default function ExplanationStage({
 
   return (
     <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
-      <RoomHeader label="Code walkthrough" detail={`${formatTime(sessionElapsed)} elapsed`} />
+      <RoomHeader label="Code walkthrough" detail={`${formatTime(sessionElapsed)} elapsed`} withoutMedia={withoutMedia} />
       <AssessmentFrame className="md:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.2fr)] lg:grid-cols-[minmax(20rem,0.7fr)_minmax(0,1.3fr)]">
             <section aria-labelledby="walkthrough-title" className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full">
               <div className="min-h-0 flex-1 overflow-y-auto p-[var(--assessment-panel-pad)]">
@@ -49,7 +56,7 @@ export default function ExplanationStage({
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-3 border-t border-line bg-surface-soft p-3">
                 <CandidatePreview stream={stream} className="w-48 max-w-full shrink-0" />
-                <div className="min-w-0 flex-1 basis-28"><p className="text-xs font-semibold">Your interview session</p><p className="mt-1 text-xs leading-5 text-muted">Keep your camera and microphone connected.</p></div>
+                <div className="min-w-0 flex-1 basis-28"><p className="text-xs font-semibold">Your interview session</p><p className="mt-1 text-xs leading-5 text-muted">{withoutMedia ? "Type your walkthrough below." : "Keep your camera and microphone connected."}</p></div>
               </div>
             </section>
 
@@ -64,7 +71,7 @@ export default function ExplanationStage({
                 <span>{languageConfig.label}</span>
               </div>
           <div className="shrink-0 border-t border-line">
-            <AnswerStatus mode={answerMode} elapsed={answerElapsed} onDone={onFinish} doneLabel="Finish interview" />
+            {withoutMedia ? <TypedAnswer value={typedAnswer} onChange={onTypedAnswerChange} onDone={onFinish} doneLabel="Finish interview" /> : <AnswerStatus mode={answerMode} elapsed={answerElapsed} onDone={onFinish} doneLabel="Finish interview" />}
           </div>
             </section>
       </AssessmentFrame>
