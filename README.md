@@ -1,6 +1,6 @@
 This is a Next.js interview frontend. Open `/admin` for an assessment overview.
 
-Setup offers **Continue without camera and microphone** alongside the device check. It keeps Sia's prompts, answer timer, and Done controls, but no audio or video can be captured without devices. With working devices, answers are recorded in browser memory for the current session. No submissions are stored on a server.
+If the device check fails, setup offers **Continue without camera and microphone**. It keeps Sia's prompts, answer timer, and Done controls, but no audio or video can be captured without devices. With working devices, answers are recorded in browser memory for the current session. No submissions are stored on a server.
 
 ## Getting Started
 

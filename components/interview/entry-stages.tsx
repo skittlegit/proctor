@@ -177,7 +177,7 @@ export function SetupStage({
   const audioDevices = devices.filter(
     (device) => device.kind === "audioinput",
   );
-  const canStart = consent && (withoutMedia || (mediaStatus === "ready" && Boolean(stream)));
+  const canStart = withoutMedia || (consent && mediaStatus === "ready" && Boolean(stream));
 
   return (
     <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
@@ -207,7 +207,7 @@ export function SetupStage({
 
         <div className="monitor-setup-grid grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(300px,350px)] xl:grid-cols-[minmax(0,1fr)_minmax(340px,390px)] xl:gap-6">
           <section
-            className="monitor-setup-preview relative min-h-[220px] min-w-0 max-w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-editor sm:aspect-video sm:min-h-0 md:aspect-auto md:h-full"
+            className={cn("monitor-setup-preview relative min-w-0 max-w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-editor sm:aspect-video sm:min-h-0 md:aspect-auto md:h-full", mediaStatus === "unavailable" && !withoutMedia ? "min-h-[280px]" : "min-h-[220px]")}
             aria-label="Camera preview"
             aria-busy={!withoutMedia && mediaStatus === "requesting"}
           >
@@ -220,7 +220,7 @@ export function SetupStage({
               <LockKeyhole className="size-3" /> Preview only
             </div>
             {(withoutMedia || mediaStatus !== "ready") && (
-              <div className="absolute inset-0 grid place-items-center bg-editor/85 p-6 text-center backdrop-blur-sm">
+              <div className="absolute inset-0 grid place-items-center bg-editor/85 p-3 text-center backdrop-blur-sm sm:p-6">
                 <div
                   className="max-w-sm"
                   role={mediaStatus === "requesting" ? "status" : undefined}
@@ -239,9 +239,14 @@ export function SetupStage({
                   </h2>
                   <p className="mx-auto mt-1.5 max-w-xs text-xs leading-5 text-white/70 sm:mt-2 sm:text-sm sm:leading-6">
                     {withoutMedia ? "Camera and microphone are off. The interview will continue as usual." : mediaStatus === "unavailable"
-                      ? mediaError
+                      ? "Try the device check again, or continue the interview without camera and microphone."
                       : "Both devices must be connected before this assessment can begin."}
                   </p>
+                  {!withoutMedia && mediaStatus === "unavailable" && (
+                    <Button className="mt-4 h-auto min-h-11 w-full whitespace-normal bg-white px-3 py-2 text-xs text-black hover:bg-white/90 sm:text-sm" onClick={() => { onWithoutMediaChange(true); onStart(); }}>
+                      Continue without camera and microphone <ArrowRight />
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -334,14 +339,6 @@ export function SetupStage({
                       ? "Checking…"
                       : "Check camera and microphone"}
                   </Button>
-                )}
-                {!withoutMedia && mediaStatus !== "requesting" && (
-                  <div className="mx-auto mt-2 w-full max-w-md">
-                    <Button variant="outline" className="h-11 w-full" onClick={() => { onWithoutMediaChange(true); if (consent) onStart(); }}>
-                      Continue without camera and microphone <ArrowRight />
-                    </Button>
-                    {!consent && <p className="mt-2 text-center text-xs text-muted">Accept the notice above, then begin the assessment.</p>}
-                  </div>
                 )}
                 <p className="mt-2 text-center text-[11px] text-muted">
                   A three-second countdown begins after confirmation.
