@@ -62,7 +62,7 @@ export default function AdminPage() {
             <div className="mt-7 rounded-xl border border-line p-5">
               <div className="flex items-start gap-4">
                 <CameraOff className="mt-0.5 size-5 shrink-0 text-muted" />
-                <div className="min-w-0 flex-1"><label htmlFor="allow-without-media" className="block cursor-pointer text-sm font-semibold">Allow continuation without camera and microphone</label><p id="media-option-description" className="mt-1 text-sm leading-6 text-muted">Candidates may choose a text response path during setup. No camera or microphone permission is requested on that path, and spoken answers are replaced with typed answers.</p></div>
+                <div className="min-w-0 flex-1"><label htmlFor="allow-without-media" className="block cursor-pointer text-sm font-semibold">Allow continuation without camera and microphone</label><p id="media-option-description" className="mt-1 text-sm leading-6 text-muted">When enabled, candidates may choose text responses before checking devices. If a device check fails, the text path is offered regardless, so they can still complete the assessment.</p></div>
                 <input id="allow-without-media" type="checkbox" role="switch" aria-describedby="media-option-description" checked={allowWithoutMedia} disabled={!loaded || saving} onChange={(event) => void changeMediaOption(event.target.checked)} className="mt-0.5 size-5 shrink-0 accent-ink" />
               </div>
               <p className="mt-4 border-t border-line pt-4 text-xs font-medium text-muted">Status: {allowWithoutMedia ? "Optional devices" : "Camera and microphone required"}</p>

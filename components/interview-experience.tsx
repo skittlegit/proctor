@@ -646,7 +646,7 @@ export default function InterviewExperience() {
                 onCameraChange={media.changeCamera}
                 onMicChange={media.changeMic}
                 onRequestMedia={() => void media.request()}
-                allowWithoutMedia={allowWithoutMedia}
+                allowWithoutMedia={allowWithoutMedia || media.status === "unavailable"}
                 withoutMedia={withoutMedia}
                 onWithoutMediaChange={(checked) => { setWithoutMedia(checked); if (checked) media.stop(); }}
                 onBack={goBack}

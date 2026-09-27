@@ -338,6 +338,14 @@ export function SetupStage({
                       : "Check camera and microphone"}
                   </Button>
                 )}
+                {!withoutMedia && mediaStatus === "unavailable" && (
+                  <div className="mx-auto mt-2 w-full max-w-md">
+                    <Button variant="outline" className="h-11 w-full" onClick={() => { onWithoutMediaChange(true); if (consent) onStart(); }}>
+                      Continue without camera and microphone <ArrowRight />
+                    </Button>
+                    {!consent && <p className="mt-2 text-center text-xs text-muted">Accept the text response notice above, then begin the assessment.</p>}
+                  </div>
+                )}
                 <p className="mt-2 text-center text-[11px] text-muted">
                   A three-second countdown begins after confirmation.
                 </p>

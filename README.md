@@ -8,6 +8,8 @@ This is a Next.js interview prototype with a shared admin setting backed by Supa
 
 The service role key stays on the server. Keep `.env.local` private. The admin password is held in page memory for the current tab and sent to the app API over HTTPS; it is not saved in browser storage. This prototype does not yet persist candidate recordings or typed answers as submissions.
 
+If a camera or microphone check fails, setup offers **Continue without camera and microphone** immediately. This recovery path works even before Supabase is configured. Candidates then type their answers and can complete the interview.
+
 ## Getting Started
 
 First, run the development server:
