@@ -62,11 +62,11 @@ export default function ConversationStage({
             </div>
           </div>
 
-          <div className="grid min-h-0 flex-1 content-center grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 px-[var(--assessment-panel-pad)] py-[var(--assessment-panel-pad)] text-left md:grid-cols-1 md:gap-6 md:text-center lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-8 lg:text-left">
+          <div className="monitor-conversation-prompt grid min-h-0 flex-1 content-center grid-cols-[4rem_minmax(0,1fr)] items-center gap-3 px-[var(--assessment-panel-pad)] py-[var(--assessment-panel-pad)] text-left md:grid-cols-1 md:gap-6 md:text-center lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-8 lg:text-left">
             <div className="flex justify-center lg:border-r lg:border-line lg:pr-8">
               <AIOrb state={orbState} size="small" />
             </div>
-            <div className="max-w-3xl md:mx-auto lg:mx-0">
+            <div className="monitor-conversation-copy max-w-3xl md:mx-auto lg:mx-0">
               <h1 className="short-mobile-question short-screen-question font-serif text-[clamp(1.8rem,2.5vw,2.65rem)] leading-[1.16] font-medium tracking-[-0.035em] text-ink">
                 &ldquo;{question.prompt}&rdquo;
               </h1>

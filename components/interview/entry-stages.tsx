@@ -178,8 +178,8 @@ export function SetupStage({
   return (
     <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
       <SecureHeader label="System check" />
-      <div className="assessment-content shell-pad mx-auto flex min-h-[calc(100dvh-var(--shell-total-header))] w-full max-w-[1520px] flex-col justify-center md:min-h-0">
-        <div className="flex min-h-0 w-full flex-col md:h-full md:max-h-[600px]">
+      <div className="assessment-content shell-pad mx-auto flex min-h-[calc(100dvh-var(--shell-total-header))] w-full max-w-[1520px] min-[1920px]:max-w-[2160px] flex-col justify-center md:min-h-0">
+        <div className="monitor-setup flex min-h-0 w-full flex-col md:h-full md:max-h-[600px]">
         <div className="mb-4 flex shrink-0 items-center gap-5">
           <div className="flex items-center gap-4">
             <div>
@@ -201,9 +201,9 @@ export function SetupStage({
           </div>
         </div>
 
-        <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(300px,350px)] xl:grid-cols-[minmax(0,1fr)_minmax(340px,390px)] xl:gap-6">
+        <div className="monitor-setup-grid grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(300px,350px)] xl:grid-cols-[minmax(0,1fr)_minmax(340px,390px)] xl:gap-6">
           <section
-            className="relative min-h-[220px] min-w-0 max-w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-editor sm:aspect-video sm:min-h-0 md:aspect-auto md:h-full"
+            className="monitor-setup-preview relative min-h-[220px] min-w-0 max-w-full overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-editor sm:aspect-video sm:min-h-0 md:aspect-auto md:h-full"
             aria-label="Camera preview"
             aria-busy={mediaStatus === "requesting"}
           >
@@ -244,7 +244,7 @@ export function SetupStage({
           </section>
 
           <section
-            className="flex min-w-0 max-w-full flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:overflow-y-auto"
+            className="monitor-setup-devices flex min-w-0 max-w-full flex-col overflow-hidden rounded-[var(--assessment-radius)] border border-line bg-surface md:h-full md:overflow-y-auto"
             aria-labelledby="device-settings-heading"
           >
             <header className="border-b border-line px-4 py-3.5 sm:px-5 sm:py-4">
@@ -259,7 +259,7 @@ export function SetupStage({
               </p>
             </header>
 
-            <div className="flex min-h-0 flex-1 flex-col divide-y divide-line">
+            <div className="monitor-setup-options flex min-h-0 flex-1 flex-col divide-y divide-line">
               <DeviceSelect
                 icon={Camera}
                 label="Camera"
@@ -278,7 +278,7 @@ export function SetupStage({
                 devices={audioDevices}
                 fallback="Default microphone"
               />
-              <div className="flex items-center justify-between px-4 py-3.5 sm:px-5">
+              <div className="monitor-setup-control flex items-center justify-between px-4 py-3.5 sm:px-5">
                 <span className="flex items-center gap-2 text-xs font-semibold text-ink-soft">
                   <Wifi className="size-4 text-ink-soft" /> Browser connection
                 </span>
@@ -286,7 +286,7 @@ export function SetupStage({
                   <CheckCircle2 className="size-3.5" /> Active
                 </span>
               </div>
-              <label className="flex cursor-pointer items-start gap-3 px-4 py-3.5 sm:px-5">
+              <label className="monitor-setup-control flex cursor-pointer items-start gap-3 px-4 py-3.5 sm:px-5">
                 <input
                   type="checkbox"
                   name="recording_consent"
@@ -363,7 +363,7 @@ function DeviceSelect({
   fallback: string;
 }) {
   return (
-    <label className="block px-4 py-3.5 sm:px-5">
+    <label className="monitor-setup-control block px-4 py-3.5 sm:px-5">
       <span className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-soft">
         <span className="flex items-center gap-1.5">
           <Icon className="size-4" /> {label}

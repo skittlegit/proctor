@@ -7,6 +7,7 @@ import {
   useReducer,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import { waitForCaptureReady } from "@/components/interview/capture-readiness";
@@ -29,6 +30,18 @@ import { CountdownStage, SetupStage, WelcomeStage } from "@/components/interview
 import ExplanationStage from "@/components/interview/explanation-stage";
 import { IntegrityDialog } from "@/components/interview/shared";
 import { useMediaSession } from "@/components/interview/use-media-session";
+
+const mobileScreenQuery = "(max-width: 767px)";
+
+function subscribeToMobileScreen(onChange: () => void) {
+  const query = window.matchMedia(mobileScreenQuery);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function isMobileScreen() {
+  return window.matchMedia(mobileScreenQuery).matches;
+}
 
 type SessionState = {
   stage: Stage;
@@ -182,6 +195,9 @@ function useAccurateClock(enabled: boolean, interval: number) {
 
 export default function InterviewExperience() {
   const [session, dispatch] = useReducer(sessionReducer, initialSession);
+  const mobileScreen = useSyncExternalStore(subscribeToMobileScreen, isMobileScreen, () => false);
+  const desktopOnlyStage = session.stage === "coding" || session.stage === "explanation";
+  const skipDesktopStages = mobileScreen && desktopOnlyStage;
   const [captureIssue, setCaptureIssue] = useState("");
   const [captureRetryError, setCaptureRetryError] = useState("");
   const [captureRetrying, setCaptureRetrying] = useState(false);
@@ -220,7 +236,7 @@ export default function InterviewExperience() {
   const answerElapsed = session.answerStartedAt ? Math.max(0, Math.floor((now - session.answerStartedAt) / 1000)) : 0;
   const sessionElapsed = session.assessmentStartedAt ? Math.max(0, Math.floor((now - session.assessmentStartedAt) / 1000)) : 0;
 
-  const promptAudioSrc = session.stage === "conversation"
+  const promptAudioSrc = skipDesktopStages ? null : session.stage === "conversation"
     ? assessment.questions[session.questionIndex].audio
     : session.stage === "explanation" ? "/audio/sia/walkthrough.mp3" : null;
 
@@ -299,6 +315,19 @@ export default function InterviewExperience() {
       return blob;
     });
   }, []);
+
+  useEffect(() => {
+    if (!skipDesktopStages) return;
+    const active = recorderRef.current;
+    if (active) {
+      active.failed = true;
+      active.chunks = [];
+      responseBlobsRef.current.delete(active.responseKey);
+      void stopAnswerRecorder();
+    }
+    dispatch({ type: "complete" });
+    try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
+  }, [skipDesktopStages, stopAnswerRecorder]);
 
   useEffect(() => {
     if (!promptAudioSrc || session.answerMode !== "asking" || captureIssue || media.integrityIssue) return;
@@ -495,9 +524,12 @@ export default function InterviewExperience() {
       return;
     }
     if (session.questionIndex < assessment.questions.length - 1) dispatch({ type: "next-question" });
-    else dispatch({ type: "begin-coding" });
+    else if (mobileScreen) {
+      dispatch({ type: "complete" });
+      try { window.localStorage.removeItem(CODE_DRAFT_KEY); } catch { /* no-op */ }
+    } else dispatch({ type: "begin-coding" });
 
-  }, [dispatch, session.answerMode, session.questionIndex, stopAnswerRecorder]);
+  }, [dispatch, mobileScreen, session.answerMode, session.questionIndex, stopAnswerRecorder]);
 
   const finishInterview = useCallback(async () => {
     if (session.answerMode !== "answering" || transitioningRef.current) return;
@@ -607,7 +639,7 @@ export default function InterviewExperience() {
                 onFinishAnswer={finishConversationAnswer}
               />
             )}
-            {session.stage === "coding" && (
+            {session.stage === "coding" && !skipDesktopStages && (
               <CodingStage
                 code={session.code}
                 language={session.language}
@@ -618,7 +650,7 @@ export default function InterviewExperience() {
                 onSubmit={() => dispatch({ type: "begin-explanation" })}
               />
             )}
-            {session.stage === "explanation" && (
+            {session.stage === "explanation" && !skipDesktopStages && (
               <ExplanationStage
                 code={session.code}
                 language={session.language}

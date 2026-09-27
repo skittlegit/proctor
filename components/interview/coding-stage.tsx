@@ -12,6 +12,7 @@ const CodeEditor = dynamic(() => import("./code-editor"), {
 import { assessment, codeLanguages, formatTime, type CodeLanguage } from "./config";
 import { AssessmentFrame, CandidatePreview, RoomHeader } from "./shared";
 import styles from "./coding-stage.module.css";
+import { CodingBriefing } from "./coding-briefing";
 
 type ColorTheme = "light" | "dark";
 
@@ -43,6 +44,7 @@ export default function CodingStage({
 }) {
   const languageConfig = codeLanguages[language];
   const challenge = assessment.codingChallenge;
+  const [showBriefing, setShowBriefing] = useState(true);
   const mainTheme = useSyncExternalStore(subscribeToTheme, getMainTheme, getServerTheme);
   const [editorPreference, setEditorPreference] = useState<{ mainTheme: ColorTheme; override: ColorTheme | null }>({ mainTheme, override: null });
   if (editorPreference.mainTheme !== mainTheme) {
@@ -51,6 +53,10 @@ export default function CodingStage({
   const editorTheme = editorPreference.mainTheme === mainTheme
     ? editorPreference.override ?? mainTheme
     : mainTheme;
+
+  if (showBriefing) {
+    return <CodingBriefing sessionElapsed={sessionElapsed} stream={stream} onContinue={() => setShowBriefing(false)} />;
+  }
 
   return (
     <main id="assessment-main" className="assessment-shell min-h-dvh bg-canvas text-ink">
@@ -127,6 +133,7 @@ export default function CodingStage({
           <div className="shrink-0 border-t border-line bg-surface-soft px-[var(--assessment-panel-pad)] py-3">
             <p id="editor-keyboard-help" className="sr-only">Tab indents. Press Escape, then Tab, to leave the editor.</p>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowBriefing(true)}>Review instructions</Button>
               <Button size="sm" onClick={onSubmit}>Submit solution <ArrowRight /></Button>
             </div>
           </div>

@@ -29,7 +29,7 @@ export function AssessmentContent({
   className?: string;
 }) {
   return (
-    <div className={cn("assessment-content shell-pad mx-auto flex w-full max-w-[1520px] items-center", className)}>
+    <div className={cn("assessment-content shell-pad mx-auto flex w-full max-w-[1520px] min-[1920px]:max-w-[2160px] items-center", className)}>
       {children}
     </div>
   );
@@ -236,7 +236,7 @@ export function SecureHeader({
       className="room-header shrink-0 border-b border-line bg-surface/95 backdrop-blur-xl"
       style={{ viewTransitionName: "assessment-header" }}
     >
-      <div className="mx-auto flex h-full w-full max-w-[1520px] items-center justify-between px-[var(--assessment-outer)]">
+      <div className="mx-auto flex h-full w-full max-w-[1520px] min-[1920px]:max-w-[2160px] items-center justify-between px-[var(--assessment-outer)]">
         <PossoLogo />
         <div className="flex min-w-0 items-center gap-1 text-xs font-semibold text-muted sm:gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -265,7 +265,7 @@ export function RoomHeader({
       className="room-header shrink-0 border-b border-line bg-surface/95 backdrop-blur-xl"
       style={{ viewTransitionName: "assessment-header" }}
     >
-      <div className="mx-auto flex h-full w-full max-w-[1520px] items-center gap-4 px-[var(--assessment-outer)]">
+      <div className="mx-auto flex h-full w-full max-w-[1520px] min-[1920px]:max-w-[2160px] items-center gap-4 px-[var(--assessment-outer)]">
         <PossoLogo />
         <div className="hidden h-7 w-px bg-line md:block" />
         <div className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-soft">{label}</div>
